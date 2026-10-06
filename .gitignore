@@ -1,0 +1,14 @@
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Dependencies (if added later)
+vendor/
+node_modules/
+.env
+.env.backup
+.env.production
