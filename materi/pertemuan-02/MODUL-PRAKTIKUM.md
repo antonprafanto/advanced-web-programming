@@ -1,14 +1,15 @@
-# MODUL PRAKTIKUM 02
-## Topik: Advanced Routing, Controllers Pattern & Form Request Validation
+# MODUL PRAKTIKUM 02 (EDISI LENGKAP & REVISI)
+## Topik: Advanced Routing, Controllers Pattern, Form Request Validation, & Middleware Pipeline
 
 ---
 
 ### I. TUJUAN PEMBELAJARAN
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
-1. Merancang routing aplikasi web yang terstruktur menggunakan **Route Model Binding**, **Scoped Binding**, **Prefix**, dan **Route Groups**.
-2. Mengimplementasikan pola Controller modern: **Resource Controller**, **Nested Resources**, dan **Single Action (Invokable) Controller**.
-3. Mengisolasi logika validasi input dari Controller menggunakan **Form Request** mandiri (*authorize, rules, messages, dan sanitasi data*).
-4. Membuat, mengonfigurasi, dan menerapkan **Custom Middleware** pada arsitektur Laravel 11/12 via `bootstrap/app.php`.
+1. Merancang routing aplikasi web kompleks menggunakan **Implicit & Explicit Route Model Binding**, **Scoped Binding**, **Subdomain Routing**, dan **Route Groups**.
+2. Mengimplementasikan pola Controller modern: **Resource Controller (Shallow Nesting)** dan **Single Action (Invokable) Controller**.
+3. Membangun validasi data terisolasi menggunakan **Form Request**, sanitasi pra-validasi (`prepareForValidation`), serta membuat **Custom Validation Rule Object** (`php artisan make:rule`).
+4. Mengimplementasikan **Custom Middleware dengan Parameter** dan **Terminable Middleware** di Laravel 11/12 via `bootstrap/app.php`.
+5. Memahami mekanisme *Content Negotiation* (perbedaan respons validasi HTTP 302 Redirect pada Browser vs HTTP 422 JSON pada API/Postman).
 
 ---
 
@@ -16,26 +17,43 @@ Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
 
 #### 1. Advanced Routing di Laravel
 
-##### A. Implicit & Custom Route Model Binding
-Alih-alih mencari model secara manual (`Product::findOrFail($id)`), Laravel dapat langsung menginjeksi instance Model berdasarkan parameter wildcard di URL.
+##### A. Implicit vs Explicit Route Model Binding
+- **Implicit Binding:** Laravel otomatis menginjeksi instance Model berdasarkan nama parameter dan tipe data. Secara default mencari berdasarkan kolom `id` atau kolom kustom:
+  ```php
+  // Mencocokkan wildcard {course} dengan kolom 'slug' di tabel courses
+  Route::get('/courses/{course:slug}', [CourseController::class, 'show']);
+  ```
+- **Explicit Binding:** Didefinisikan secara eksplisit di `app/Providers/AppServiceProvider.php` method `boot()`. Berguna jika Anda ingin kueri kustom atau format ID terenkripsi (misal: Hashids):
+  ```php
+  // app/Providers/AppServiceProvider.php
+  use App\Models\User;
+  use Illuminate\Support\Facades\Route;
 
-Secara default, Laravel mencocokkan wildcard dengan kolom `id`. Kita dapat mengubahnya ke kolom lain (misal: `slug` atau `uuid`):
+  public function boot(): void
+  {
+      Route::bind('user_custom', function (string $value) {
+          return User::where('uuid', $value)->where('is_active', true)->firstOrFail();
+      });
+  }
+  ```
 
+##### B. Scoped Bindings (Mencegah Celah Keamanan IDOR)
+Ketika ada relasi bertingkat (misal: Course memiliki banyak Lesson), scoped binding menjamin bahwa lesson ID yang diakses benar-benar milik course tersebut:
 ```php
-// Mengikat parameter otomatis berdasarkan kolom 'slug'
-Route::get('/courses/{course:slug}', [CourseController::class, 'show']);
-```
-
-##### B. Scoped Bindings (Nested Model Binding)
-Untuk relasi bertingkat, scoped binding memastikan bahwa model anak benar-benar dimiliki oleh model induk (mencegah *Broken Object Level Authorization* / IDOR):
-
-```php
-// Otomatis memvalidasi bahwa $lesson adalah milik $course
+// Otomatis 404 jika lesson bukan milik course yang bersangkutan
 Route::get('/courses/{course}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
 ```
 
-##### C. Fallback Routes
-Menangani URL yang tidak terdaftar dengan halaman 404 kustom yang elegan:
+##### C. Subdomain Routing
+Berguna untuk aplikasi multi-tenant atau portal khusus:
+```php
+Route::domain('{kampus}.portal-akademik.test')->group(function () {
+    Route::get('/info', [TenantController::class, 'index']);
+});
+```
+
+##### D. Fallback Routes
+Menangani URL yang tidak ditemukan dengan tampilan ramah pengguna:
 ```php
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
@@ -44,73 +62,47 @@ Route::fallback(function () {
 
 ---
 
-#### 2. Controllers Pattern: Resource vs Invokable
+#### 2. Controllers Pattern: Kapan Resource vs Invokable?
 
-##### A. Resource Controller & Shallow Nesting
-Resource controller menyediakan 7 aksi standar RESTful (`index, create, store, show, edit, update, destroy`).
-
-Untuk relasi bertingkat, gunakan **shallow nesting** agar URI tidak terlalu panjang:
-```php
-// URL: /posts/{post}/comments (index, create, store)
-// URL: /comments/{comment} (show, edit, update, destroy)
-Route::resource('posts.comments', CommentController::class)->shallow();
-```
-
-##### B. Single Action / Invokable Controller
-Jika sebuah proses memiliki alur bisnis spesifik dan kompleks (misal: proses pembayaran, ekspor laporan, atau aktivasi akun), jangan tumpuk ke dalam controller biasa. Gunakan **Invokable Controller**:
-
-```bash
-php artisan make:controller CheckoutOrderController --invokable
-```
-
-```php
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-
-class CheckoutOrderController extends Controller
-{
-    public function __invoke(Request $request)
-    {
-        // Controller ini hanya memiliki SATU tanggung jawab tunggal (Single Responsibility)
-        return response()->json(['message' => 'Pesanan berhasil diproses.']);
-    }
-}
-```
+- **Resource Controller:** Cocok untuk entitas CRUD standar (7 aksi: `index, create, store, show, edit, update, destroy`).
+  ```php
+  // Gunakan shallow() agar URI nested tidak bertele-tele
+  Route::resource('courses.reviews', CourseReviewController::class)->shallow();
+  ```
+- **Single Action (Invokable) Controller:** Pilihan terbaik untuk proses transaksi, kalkulasi, atau aksi tunggal kompleks (misal: `CheckoutController`, `SubmitProposalController`, `ActivateAccountController`).
+  ```bash
+  php artisan make:controller ApplyScholarshipController --invokable
+  ```
+  Controller hanya memiliki method `__invoke()`, sehingga sangat fokus (*Single Responsibility Principle*).
 
 ---
 
-#### 3. Form Request Validation (Separation of Concerns)
+#### 3. Form Request Validation & Custom Validation Rules
 
-> [!CAUTION]
-> **Anti-Pattern:** Melakukan validasi inline puluhan baris di dalam Controller (`$request->validate([...])`) adalah penyebab utama controller menjadi kotor dan sulit diuji (*Fat Controller*).
-
-Pindahkan seluruh aturan validasi ke kelas **Form Request**:
+##### A. Anatomi Kelas Form Request
 ```bash
 php artisan make:request StoreStudentRequest
 ```
 
-Anatomi kelas Form Request:
 ```php
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreStudentRequest extends FormRequest
 {
-    // 1. Otorisasi: Apakah pengguna saat ini berhak mengirim request ini?
+    // 1. Otorisasi Request
     public function authorize(): bool
     {
-        return true; // Atau logika pengecekan hak akses pengguna
+        return $this->user()?->can('create-student') ?? false;
     }
 
-    // 2. Pra-pemrosesan Data (Sanitasi sebelum divalidasi)
+    // 2. Sanitasi Pra-Validasi (Mengubah input sebelum divalidasi)
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => strtolower(trim($this->email)),
-            'phone' => preg_replace('/[^0-9]/', '', $this->phone),
+            'nim'   => strtoupper(trim((string) $this->nim)),
+            'email' => strtolower(trim((string) $this->email)),
         ]);
     }
 
@@ -119,49 +111,61 @@ class StoreStudentRequest extends FormRequest
     {
         return [
             'nim'   => ['required', 'string', 'size:14', 'unique:students,nim'],
-            'name'  => ['required', 'string', 'min:3', 'max:100'],
             'email' => ['required', 'email:rfc,dns', 'unique:students,email'],
-            'gpa'   => ['required', 'numeric', 'between:0.00,4.00'],
+            'ipk'   => ['required', 'numeric', 'between:0.00,4.00'],
         ];
     }
 
-    // 4. Kustomisasi Pesan Error ke Bahasa Indonesia
+    // 4. Pesan Error Ramah Pengguna
     public function messages(): array
     {
         return [
-            'nim.required'   => 'NIM wajib diisi.',
-            'nim.unique'     => 'NIM ini sudah terdaftar di sistem.',
-            'gpa.between'    => 'IPK harus berada di rentang 0.00 hingga 4.00.',
+            'nim.size'     => 'Format NIM harus tepat 14 karakter.',
+            'ipk.between'  => 'Nilai IPK harus berada pada rentang 0.00 hingga 4.00.',
         ];
     }
 }
 ```
 
-Di Controller, Anda cukup men-typehint Form Request tersebut:
-```php
-public function store(StoreStudentRequest $request)
-{
-    // Jika sampai di baris ini, data DIJAMIN 100% SUDAH VALID!
-    $validatedData = $request->validated();
-    
-    Student::create($validatedData);
+##### B. Membuat Custom Validation Rule Object
+Jika aturan validasi tidak bisa diakomodasi oleh validator bawaan (misal: validasi nomor WhatsApp berformat Indonesia atau cek format NIM kampus tertentu):
+```bash
+php artisan make:rule ValidIndonesianPhone
+```
 
-    return redirect()->route('students.index')->with('success', 'Data mahasiswa berhasil disimpan.');
+Isi berkas `app/Rules/ValidIndonesianPhone.php`:
+```php
+namespace App\Rules;
+
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
+
+class ValidIndonesianPhone implements ValidationRule
+{
+    public function validate(string $attribute, mixed $value, Closure $fail): void
+    {
+        // Nomor HP Indonesia wajib diawali 08 atau 628 dan panjang 10-15 digit
+        if (!preg_match('/^(08|628)[0-9]{8,13}$/', (string) $value)) {
+            $fail(':attribute harus berupa nomor telepon Indonesia yang valid (contoh: 08123456789).');
+        }
+    }
 }
+```
+
+Gunakan di Form Request:
+```php
+'no_hp' => ['required', new \App\Rules\ValidIndonesianPhone],
 ```
 
 ---
 
-#### 4. Custom Middleware di Laravel 11/12
+#### 4. Custom Middleware Pipeline di Laravel 11/12
 
-Middleware berfungsi sebagai lapisan penyaring (*HTTP filter*) sebelum request menyentuh controller.
-
-##### Langkah Membuat Middleware:
+##### A. Middleware dengan Parameter (Multi-Role Guard)
 ```bash
-php artisan make:middleware EnsureProfileIsComplete
+php artisan make:middleware CheckRole
 ```
 
-Isi berkas `app/Http/Middleware/EnsureProfileIsComplete.php`:
 ```php
 namespace App\Http\Middleware;
 
@@ -169,16 +173,17 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class EnsureProfileIsComplete
+class CheckRole
 {
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * Middleware dapat menerima argumen dinamis (...$roles)
+     */
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
-        // Jika user belum mengisi nomor telepon, arahkan ke halaman lengkapi profil
-        if ($user && empty($user->phone_number)) {
-            return redirect()->route('profile.edit')
-                ->with('warning', 'Harap lengkapi nomor telepon profil Anda terlebih dahulu.');
+        if (!$user || !in_array($user->role, $roles, true)) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk halaman ini.');
         }
 
         return $next($request);
@@ -186,57 +191,64 @@ class EnsureProfileIsComplete
 }
 ```
 
-##### Pendaftaran Middleware di Laravel 11 / 12 (`bootstrap/app.php`):
-Pada Laravel 11/12, middleware didaftarkan melalui method `withMiddleware` di `bootstrap/app.php`:
+##### B. Terminable Middleware (Post-Response Tasks)
+Terminable middleware mengeksekusi kode **setelah** response dikirim ke browser pengguna (sangat berguna untuk logging audit trail atau pencatatan metrik performa tanpa memperlambat loading user):
+```php
+public function terminate(Request $request, Response $response): void
+{
+    // Dijalankan setelah browser menerima response
+    \Log::info("Akses rute: {$request->path()} dengan status {$response->getStatusCode()}");
+}
+```
 
+##### C. Pendaftaran Alias Middleware di `bootstrap/app.php` (Laravel 11/12):
 ```php
 // bootstrap/app.php
-use App\Http\Middleware\EnsureProfileIsComplete;
+use App\Http\Middleware\CheckRole;
 
 return Application::configure(basePath: dirname(__DIR__))
-    ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
-        health: '/up',
-    )
+    // ...
     ->withMiddleware(function ($middleware) {
-        // Daftarkan alias middleware di sini:
         $middleware->alias([
-            'profile.complete' => EnsureProfileIsComplete::class,
+            'role' => CheckRole::class,
         ]);
     })
-    ->withExceptions(function ($exceptions) {
-        //
-    })->create();
+    // ...
 ```
 
-##### Penggunaan Middleware pada Route Group:
+Penggunaan pada Route:
 ```php
-Route::middleware(['auth', 'profile.complete'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/scholarship/apply', [ScholarshipController::class, 'create'])->name('scholarship.apply');
-});
+// Hanya role 'admin' atau 'kaprodi' yang boleh mengakses
+Route::get('/laporan-akademik', [ReportController::class, 'index'])->middleware('role:admin,kaprodi');
 ```
+
+---
+
+#### 5. Jebakan Klasik Pengujian: Browser vs Postman (Content Negotiation)
+
+> [!IMPORTANT]
+> **Mengapa saat uji coba POST di Postman terjadi Redirect 302 ke halaman login/beranda alih-alih menampilkan error validasi?**
+> - **Pada Web Browser:** Laravel mengasumsikan request berasal dari form HTML biasa, sehingga saat validasi gagal, Laravel otomatis melakukan `redirect()->back()` dengan membawa sesi flash `$errors` dan `old()`.
+> - **Pada Postman / API Client:** Anda **WAJIB** menambahkan header HTTP:
+>   `Accept: application/json`
+>   Dengan header ini, Laravel langsung mengembalikan respons standar API: **HTTP Status 422 (Unprocessable Content)** beserta detail error berformat JSON!
 
 ---
 
 ### III. LANGKAH PRAKTIKUM LABORATORIUM
 
-Gunakan project latihan `praktikum-01-weblanjut` yang telah dibuat pada pertemuan sebelumnya atau buat baru.
-
-#### Langkah 1: Pelajari Berkas Studi Kasus
-Amati perbandingan kode pada folder `studi-kasus/`:
-1. [01-fat-controller-bad.php](studi-kasus/01-fat-controller-bad.php): Contoh kode controller yang kotor.
-2. [02-clean-controller-formrequest.php](studi-kasus/02-clean-controller-formrequest.php): Contoh refactoring bersih dengan Form Request & Middleware.
+#### Langkah 1: Pelajari Contoh Studi Kasus
+Periksa berkas pada subfolder `studi-kasus/`:
+1. [01-fat-controller-bad.php](studi-kasus/01-fat-controller-bad.php): Controller gemuk yang melanggar prinsip desain.
+2. [02-clean-controller-formrequest.php](studi-kasus/02-clean-controller-formrequest.php): Refactoring bersih dengan Form Request & Invokable Controller.
 
 ---
 
 #### Langkah 2: Membuat Invokable Controller
-Jalankan perintah:
 ```bash
 php artisan make:controller ApplyScholarshipController --invokable
 ```
-Buka file `app/Http/Controllers/ApplyScholarshipController.php`, modifikasi method `__invoke`:
+Buka `app/Http/Controllers/ApplyScholarshipController.php`:
 ```php
 namespace App\Http\Controllers;
 
@@ -247,12 +259,10 @@ class ApplyScholarshipController extends Controller
 {
     public function __invoke(ScholarshipApplicationRequest $request): JsonResponse
     {
-        $payload = $request->validated();
-
         return response()->json([
             'status'  => 'success',
-            'message' => 'Pendaftaran beasiswa berhasil diterima untuk diverifikasi.',
-            'data'    => $payload,
+            'message' => 'Pendaftaran beasiswa berhasil diterima!',
+            'data'    => $request->validated(),
         ], 201);
     }
 }
@@ -260,12 +270,13 @@ class ApplyScholarshipController extends Controller
 
 ---
 
-#### Langkah 3: Membuat Form Request
-Jalankan perintah:
+#### Langkah 3: Membuat Form Request & Custom Rule
+Buat Form Request:
 ```bash
 php artisan make:request ScholarshipApplicationRequest
 ```
-Buka `app/Http/Requests/ScholarshipApplicationRequest.php`, lengkapi aturan validasi:
+
+Buka `app/Http/Requests/ScholarshipApplicationRequest.php`:
 ```php
 namespace App\Http\Requests;
 
@@ -281,14 +292,15 @@ class ScholarshipApplicationRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'nim' => strtoupper(trim($this->nim ?? '')),
+            'nim'          => strtoupper(trim((string) $this->nim)),
+            'nama_lengkap' => ucwords(trim((string) $this->nama_lengkap)),
         ]);
     }
 
     public function rules(): array
     {
         return [
-            'nim'             => ['required', 'string', 'min:8', 'max:20'],
+            'nim'             => ['required', 'string', 'size:14'],
             'nama_lengkap'    => ['required', 'string', 'min:3'],
             'ipk'             => ['required', 'numeric', 'between:3.00,4.00'],
             'penghasilan_ortu'=> ['required', 'numeric', 'min:0'],
@@ -299,8 +311,9 @@ class ScholarshipApplicationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'ipk.between' => 'Syarat minimal IPK untuk beasiswa ini adalah 3.00.',
-            'semester.between' => 'Beasiswa hanya terbuka untuk mahasiswa semester 3 hingga 8.',
+            'nim.size'         => 'NIM mahasiswa harus tepat 14 karakter.',
+            'ipk.between'      => 'Syarat minimal IPK penerima beasiswa adalah 3.00.',
+            'semester.between' => 'Pendaftaran beasiswa hanya terbuka untuk semester 3 s/d 8.',
         ];
     }
 }
@@ -308,19 +321,86 @@ class ScholarshipApplicationRequest extends FormRequest
 
 ---
 
-#### Langkah 4: Mendaftarkan Route & Pengecekan
-Tambahkan route di `routes/web.php`:
+#### Langkah 4: Membuat Blade Form Pengujian
+Buat file `resources/views/scholarship/form.blade.php`:
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Pendaftaran Beasiswa</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; max-width: 500px; margin: auto; }
+        .error { color: red; font-size: 0.875rem; }
+        .field { margin-bottom: 1rem; }
+        input { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <h2>Formulir Pendaftaran Beasiswa</h2>
+
+    @if(session('success'))
+        <div style="color: green; margin-bottom: 1rem;">{{ session('success') }}</div>
+    @endif
+
+    <form action="{{ route('beasiswa.daftar') }}" method="POST">
+        @csrf
+
+        <div class="field">
+            <label>NIM (14 Karakter):</label>
+            <input type="text" name="nim" value="{{ old('nim') }}">
+            @error('nim') <div class="error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="field">
+            <label>Nama Lengkap:</label>
+            <input type="text" name="nama_lengkap" value="{{ old('nama_lengkap') }}">
+            @error('nama_lengkap') <div class="error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="field">
+            <label>IPK Terakhir (3.00 - 4.00):</label>
+            <input type="text" name="ipk" value="{{ old('ipk') }}">
+            @error('ipk') <div class="error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="field">
+            <label>Penghasilan Orang Tua (Rp):</label>
+            <input type="number" name="penghasilan_ortu" value="{{ old('penghasilan_ortu') }}">
+            @error('penghasilan_ortu') <div class="error">{{ $message }}</div> @enderror
+        </div>
+
+        <div class="field">
+            <label>Semester (3 - 8):</label>
+            <input type="number" name="semester" value="{{ old('semester') }}">
+            @error('semester') <div class="error">{{ $message }}</div> @enderror
+        </div>
+
+        <button type="submit" style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Kirim Pendaftaran
+        </button>
+    </form>
+</body>
+</html>
+```
+
+Daftarkan rute di `routes/web.php`:
 ```php
 use App\Http\Controllers\ApplyScholarshipController;
+
+Route::get('/beasiswa', function () {
+    return view('scholarship.form');
+})->name('beasiswa.form');
 
 Route::post('/beasiswa/daftar', ApplyScholarshipController::class)
     ->name('beasiswa.daftar');
 ```
 
-Jalankan perintah untuk memverifikasi daftar route yang aktif:
-```bash
-php artisan route:list --path=beasiswa
-```
+---
+
+#### Langkah 5: Pengujian Dua Skenario
+1. **Pengujian Browser:** Akses `http://127.0.0.1:8000/beasiswa`, kirim data kosong, dan amati pesan error Bahasa Indonesia serta repopulasi data `old()`.
+2. **Pengujian Postman:** Kirim request `POST http://127.0.0.1:8000/beasiswa/daftar` dengan menyertakan header `Accept: application/json`. Amati bahwa respons mengembalikan status **HTTP 422 Unprocessable Content** berformat JSON.
 
 ---
 
