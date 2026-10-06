@@ -60,6 +60,18 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
+### Pertemuan 04: Deep Dive Eloquent ORM: Complex Relationships & N+1 Optimization
+*Folder Materi:* [materi/pertemuan-04/](materi/pertemuan-04/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-04/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-04/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](materi/pertemuan-04/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 04](materi/pertemuan-04/TUGAS-04.md)
+- 📂 Studi Kasus:
+  - [01-n-plus-one-disaster.php (N+1 Query Problem Disaster)](materi/pertemuan-04/studi-kasus/01-n-plus-one-disaster.php)
+  - [02-eager-loading-optimized.php (Eager Loading & Aggregation Benchmark)](materi/pertemuan-04/studi-kasus/02-eager-loading-optimized.php)
+
+---
+
 ## 🛠️ Tech Stack & Ekosistem
 - **Backend Framework**: PHP 8.2+ / Laravel 11.x/12.x
 - **Database & Cache**: PostgreSQL / MySQL, Redis
