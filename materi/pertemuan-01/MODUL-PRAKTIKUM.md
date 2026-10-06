@@ -1,175 +1,240 @@
-# MODUL PRAKTIKUM 01
-## Topik: Transisi dari Native PHP ke Modern PHP 8.x & Request Lifecycle Laravel
+# MODUL PRAKTIKUM 01 (EDISI LENGKAP & REVISI)
+## Topik: Transisi dari Native PHP ke Modern PHP 8.x, PSR-4 Autoloading, & Request Lifecycle Laravel
 
 ---
 
 ### I. TUJUAN PEMBELAJARAN
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
-1. Mengidentifikasi kelemahan mendasar kode web PHP native (prosedural, pencampuran logika & tampilan, serta risiko keamanan umum).
-2. Menerapkan fitur-fitur modern PHP 8.x (*Constructor Property Promotion*, *Match Expression*, *Nullsafe Operator*, *Named Arguments*, dan *Type Hinting*) untuk menulis kode yang bersih (*clean code*).
-3. Menjelaskan secara komprehensif siklus hidup permintaan HTTP (*Request Lifecycle*) pada framework Laravel.
-4. Menyiapkan dan mengonfigurasi lingkungan kerja pengembangan web modern menggunakan Composer dan Git.
+1. Mengidentifikasi kelemahan mendasar kode web PHP native (prosedural, pencampuran logika & tampilan, serta risiko keamanan fatal).
+2. Memahami bagaimana **Composer PSR-4 Autoloading & Namespace** menggantikan ketergantungan terhadap `include` / `require_once`.
+3. Menerapkan fitur-fitur esensial modern PHP 8.x (*Constructor Property Promotion, Match Expression, Nullsafe Operator, Named Arguments, Readonly Class, dan Type Hinting*).
+4. Memahami struktur minimalis framework **Laravel versi terbaru (11.x/12.x)** dan siklus hidup permintaan HTTP (*Request Lifecycle*).
+5. Menguasai manajemen environment (`.env`), enkripsi `APP_KEY`, serta perkakas CLI (`php artisan serve`, `route:list`, dan `tinker`).
 
 ---
 
 ### II. ALAT & PRASYARAT LINGKUNGAN
-Sebelum memulai, pastikan perangkat telah terpasang:
+Pastikan perangkat telah terpasang:
 - **PHP CLI**: Versi $\ge$ 8.2 (`php -v`)
 - **Composer**: Dependency Manager untuk PHP (`composer -V`)
 - **Node.js & NPM**: Runtime JS untuk asset bundling (`node -v` & `npm -v`)
 - **Git**: Version Control System (`git --version`)
-- **Code Editor**: VS Code (rekomendasi ekstensi: *PHP Intelephense*, *Laravel Extra Intellisense*) atau PhpStorm.
+- **Code Editor**: VS Code (ekstensi rekomendasi: *PHP Intelephense*, *Laravel Extra Intellisense*) atau PhpStorm.
+
+> [!WARNING]
+> **Troubleshooting Pengguna Windows (XAMPP / Laragon):**
+> 1. Jika muncul pesan `'php' is not recognized as an internal or external command`, pastikan folder binary PHP (misal: `C:\laragon\bin\php\php-8.x` atau `C:\xampp\php`) telah ditambahkan ke **System Environment Variables (PATH)**.
+> 2. Buka `php.ini`, pastikan ekstensi berikut tidak diawali tanda titik koma (sudah aktif):
+>    `extension=curl`, `extension=fileinfo`, `extension=mbstring`, `extension=openssl`, `extension=pdo_mysql`, `extension=pdo_sqlite`, `extension=zip`.
 
 ---
 
-### III. TEORI & BEDAH SINTAKS MODERN PHP 8.X
+### III. JEMBATAN KONSEPTUAL: DARI NATIVE KE MODERN
 
-PHP telah bertransformasi pesat dari bahasa skrip prosedural menjadi bahasa pemrograman berbasis objek bertipe ketat (*strictly typed OOP*). Berikut 5 fitur krusial yang wajib dikuasai:
-
-#### 1. Constructor Property Promotion
-Mengurangi boilerplate pendeklarasian properti class dan assignment berulang.
-
-*Cara Lama (PHP 7 ke bawah):*
+#### 1. Masalah Ketergantungan `require` / `include` vs PSR-4 Autoloading
+Di PHP Native, mahasiswa terbiasa menulis:
 ```php
-class User {
-    public string $name;
-    public string $email;
+// Kode Native Usang
+require_once 'koneksi.php';
+require_once 'model/Mahasiswa.php';
+require_once 'helper/fungsi.php';
+```
+Kelemahannya: Rawan *duplicate declaration error*, jalur path relatif yang rapuh (*fragile paths*), dan beban memori jika file di-load padahal tidak digunakan.
 
-    public function __construct(string $name, string $email) {
-        $this->name = $name;
-        $this->email = $email;
-    }
-}
+**Solusi Modern (PSR-4 Autoloading via Composer):**
+Composer memetakan *Namespace* ke struktur folder secara otomatis. Cukup panggil class via keyword `use`:
+```php
+namespace App\Services;
+
+use App\Models\Student; // Otomatis diload oleh Composer dari app/Models/Student.php!
 ```
 
-*Cara Modern (PHP 8.x):*
+---
+
+#### 2. Fitur Unggulan Modern PHP 8.x yang Wajib Dikuasai
+
+##### A. Constructor Property Promotion
+Menghilangkan boilerplate penulisan properti berulang.
 ```php
-class User {
+// PHP 8.x
+class Student {
     public function __construct(
+        public string $nim,
         public string $name,
-        public string $email,
         public readonly int $id = 0
     ) {}
 }
 ```
 
-#### 2. Match Expression (Pengganti `switch-case`)
-`match` mengevaluasi ekspresi secara *strict comparison* (`===`) dan langsung mengembalikan nilai (*return value*).
-
+##### B. Match Expression (Strict, Safe, dan Menghasilkan Nilai)
 ```php
-$status = 'paid';
+$status = 'A';
 
-$badgeColor = match($status) {
-    'pending' => 'yellow',
-    'paid'    => 'green',
-    'failed', 'cancelled' => 'red',
-    default   => 'gray',
+$keterangan = match($status) {
+    'A' => 'Mahasiswa Aktif',
+    'C' => 'Cuti Akademik',
+    'N', 'D' => 'Non-Aktif / Drop Out',
+    default => 'Status Tidak Dikenal',
 };
 ```
 
-#### 3. Nullsafe Operator (`?->`)
-Mencegah fatal error *"Call to a member function on null"* tanpa nested `if (!is_null(...))`.
-
+##### C. Nullsafe Operator (`?->`)
+Mencegah fatal error *"Call to a member function on null"*:
 ```php
-// Alih-alih:
-// $country = $user !== null && $user->profile !== null ? $user->profile->country : null;
-
-// Cukup tulis:
-$country = $user?->profile?->country;
+// Aman meskipun $student atau $advisor bernilai null
+$dosenPembimbing = $student?->advisor?->name;
 ```
 
-#### 4. Named Arguments
-Mengirim parameter fungsi berdasarkan namanya tanpa perlu memedulikan urutan parameter opsional.
-
+##### D. Named Arguments
+Mengirim parameter fungsi berdasarkan nama secara fleksibel:
 ```php
-function createUser(string $name, string $role = 'user', bool $isActive = true): void {
+function kirimEmailNotifikasi(string $to, string $subject, bool $urgent = false): void {
     // ...
 }
 
-// Memanggil fungsi dengan melewati argumen $role:
-createUser(name: 'Anton', isActive: false);
+// Melewatkan parameter opsional dengan aman
+kirimEmailNotifikasi(to: 'budi@kampus.ac.id', subject: 'Jadwal Kuliah', urgent: true);
+```
+
+##### E. Readonly Class & Enums
+```php
+enum Role: string {
+    case Admin = 'admin';
+    case Dosen = 'dosen';
+    case Mahasiswa = 'mahasiswa';
+}
+
+readonly class UserProfile {
+    public function __construct(
+        public string $username,
+        public Role $role
+    ) {}
+}
 ```
 
 ---
 
-### IV. ANATOMI SIKLUS HIDUP REQUEST (LARAVEL REQUEST LIFECYCLE)
+### IV. ANATOMI SIKLUS HIDUP REQUEST & STRUKTUR BARU LARAVEL (11.x / 12.x)
 
-Ketika user mengakses URL (misal: `https://aplikasi.test/mahasiswa`), apa yang sebenarnya terjadi di balik layar?
+> [!IMPORTANT]
+> **Catatan Arsitektur Laravel Terbaru:**
+> Mulai Laravel 11.x, direktori aplikasi dirampingkan (*Slim Skeleton*). 
+> - **TIDAK ADA LAGI** `app/Http/Kernel.php`.
+> - Konfigurasi Middleware, Routing, dan Exceptions dipusatkan di file `bootstrap/app.php`.
 
+#### Diagram Alur Request Lifecycle:
 ```
-[Browser / HTTP Client]
+[User Browser / Postman]
        │
-       ▼ (1. HTTP Request)
-[public/index.php]  <─── Entry Point Tunggal (Single Entry Point)
+       ▼ (1. HTTP Request dikirim)
+[public/index.php]  <─── Titik Masuk Tunggal (Single Entry Point)
        │
-       ▼ (2. Autoload & Bootstrap)
-[bootstrap/app.php] <─── Inisialisasi Service Container & Kernel
+       ▼ (2. Autoload & Bootstrap Aplikasi)
+[bootstrap/app.php] <─── Mengonfigurasi Routing, Middleware Pipeline, & Exception Handling
        │
-       ▼ (3. Pipeline Global & Route Middleware)
-[Middleware Stack]  <─── Verifikasi CSRF, Session, Auth, Rate Limiter
+       ▼ (3. Middleware Pipeline)
+[Middleware Stack]  <─── Enkripsi Cookie, Verifikasi CSRF, Session, Rate Limiter
        │
-       ▼ (4. Routing & Controller)
-[Route] ───────────> [Controller Method]
-                             │
-                             ▼ (5. Business Logic & ORM)
-                      [Eloquent Model / Database]
-                             │
-                             ▼ (6. Response Preparation)
-[HTTP Response / JSON / View Blade]
+       ▼ (4. Routing Engine)
+[routes/web.php / api.php] ──> Menentukan Controller / Closure tujuan
        │
-       ▼ (7. Kirim kembali ke User)
-[Browser / HTTP Client]
+       ▼ (5. Business Logic & ORM)
+[Controller / Service / Eloquent Model]
+       │
+       ▼ (6. Response Preparation)
+[View Blade / JSON Payload / Inertia Response]
+       │
+       ▼ (7. HTTP Response balik ke Client)
+[User Browser / Postman]
 ```
-
-**Poin Kunci:**
-1. **Single Entry Point (`public/index.php`)**: Tidak ada lagi akses langsung ke file terpisah seperti `edit_mahasiswa.php` atau `koneksi.php`. Semua request melewati pintu gerbang yang sama.
-2. **Inversion of Control (IoC) & Service Container**: Komponen framework saling terhubung secara modular, bukan melalui *hardcoded instantiation*.
 
 ---
 
-### V. LANGKAH PRAKTIKUM MANDIRI
+### V. MANAJEMEN ENVIRONMENT (`.env`) & KEAMANAN DASAR
 
-#### Langkah 1: Memeriksa Studi Kasus Refactoring
-Buka dan pelajari dua berkas studi kasus di subfolder `studi-kasus/`:
-1. [01-native-legacy.php](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/01-native-legacy.php): Kode native PHP spaghetti dengan celah SQL Injection.
-2. [02-modern-php8-refactored.php](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php): Kode yang telah direfaktor menggunakan OOP modern, PDO prepared statements, dan custom exception.
+1. **Kenapa harus `.env`?**
+   - Memisahkan konfigurasi sensitif (kredensial database, API key rahasia, port mailer) dari kode sumber aplikasi.
+   - **Aturan Baku:** File `.env` **HARAM** di-commit ke Git! Git hanya menyimpan template contoh yaitu `.env.example`.
+2. **Peran `APP_KEY`:**
+   - Dibuat via perintah `php artisan key:generate`.
+   - String 32 karakter acak ini digunakan Laravel untuk mengenkripsi cookie sesi, password reset token, dan data terenkripsi lainnya. Jika key ini hilang, semua session yang tersimpan tidak akan dapat didekripsi.
 
-Jalankan skrip refactor menggunakan terminal:
+---
+
+### VI. LANGKAH PRAKTIKUM LABORATORIUM
+
+#### Langkah 1: Uji Coba Mandiri Kode Refactoring PHP 8.x
+Buka terminal pada repositori mata kuliah ini dan jalankan skrip studi kasus refactoring mandiri:
 ```bash
 php materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php
 ```
-
-#### Langkah 2: Inisialisasi Project Baru Laravel
-Buat project latihan Laravel di direktori lokal mahasiswa:
-```bash
-composer create-project laravel/laravel praktikum-web-lanjut
-cd praktikum-web-lanjut
-```
-
-Jalankan web server lokal bawaan Laravel:
-```bash
-php artisan serve
-```
-Akses di browser: `http://127.0.0.1:8000`.
-
-#### Langkah 3: Mengamati Request Lifecycle via `dd()` / `dump()`
-Buka file `routes/web.php`, tambahkan route eksperimen:
-```php
-use Illuminate\Http\Request;
-
-Route::get('/debug-lifecycle', function (Request $request) {
-    return [
-        'ip_address' => $request->ip(),
-        'user_agent' => $request->userAgent(),
-        'method'     => $request->method(),
-        'php_version'=> PHP_VERSION,
-        'laravel_ver'=> app()->version(),
-    ];
-});
-```
-Akses URL `http://127.0.0.1:8000/debug-lifecycle` dan amati struktur data JSON yang dikembalikan.
+Pelajari bagaimana data DTO, enum, dan query PDO prepared statements bekerja secara independen.
 
 ---
 
-### VI. TUGAS PRAKTIKUM
-Kerjakan penugasan terstruktur yang ada pada dokumen [TUGAS-01.md](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md).
+#### Langkah 2: Inisialisasi Project Baru Laravel
+Buat direktori latihan terpisah:
+```bash
+composer create-project laravel/laravel praktikum-01-weblanjut
+cd praktikum-01-weblanjut
+```
+
+Periksa informasi lingkungan instalasi:
+```bash
+php artisan about
+```
+
+---
+
+#### Langkah 3: Menjalankan Server & Memeriksa Routing
+Jalankan server pengembangan:
+```bash
+php artisan serve
+```
+Buka browser pada alamat `http://127.0.0.1:8000`.
+
+Buka file `routes/web.php` dan tambahkan route baru untuk mengecek lifecycle:
+```php
+use Illuminate\Http\Request;
+
+Route::get('/cek-request', function (Request $request) {
+    return [
+        'status'       => 'Sukses',
+        'ip_pengguna'  => $request->ip(),
+        'metode_http'  => $request->method(),
+        'url_lengkap'  => $request->fullUrl(),
+        'php_version'  => PHP_VERSION,
+        'laravel_ver'  => app()->version(),
+    ];
+});
+```
+Buka terminal baru di folder yang sama, periksa daftar routing yang aktif:
+```bash
+php artisan route:list
+```
+
+---
+
+#### Langkah 4: Eksplorasi Interaktif dengan `php artisan tinker`
+Masuk ke mode REPL (Read-Eval-Print Loop) Laravel:
+```bash
+php artisan tinker
+```
+Coba jalankan sintaks modern langsung di dalam console tinker:
+```php
+// Test 1: Match expression di tinker
+$kode = 'A';
+match($kode) { 'A' => 'Lulus', default => 'Ulang' };
+
+// Test 2: Enkripsi Laravel menggunakan APP_KEY
+$rahasia = encrypt('PasswordSuperRahasia123');
+decrypt($rahasia);
+
+// Keluar dari tinker
+exit;
+```
+
+---
+
+### VII. LEMBAR TUGAS MANDIRI
+Kerjakan soal penugasan terstruktur yang tercantum pada [TUGAS-01.md](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md).
