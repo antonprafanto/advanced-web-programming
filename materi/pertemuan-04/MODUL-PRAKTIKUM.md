@@ -1,5 +1,5 @@
-# MODUL PRAKTIKUM 04
-## Topik: Deep Dive Eloquent ORM: Complex Relationships & N+1 Query Optimization
+# MODUL PRAKTIKUM 04 (EDISI LENGKAP & REVISI)
+## Topik: Deep Dive Eloquent ORM: Complex Relationships, Query Optimization, & N+1 Prevention
 
 ---
 
@@ -7,8 +7,8 @@
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
 1. Merancang dan mengimplementasikan relasi basis data kompleks: **Many-to-Many dengan Custom Pivot Model**, **Has-Many-Through**, serta **Polymorphic Relations** (One-to-Many & Many-to-Many).
 2. Mengamankan integritas tipe polimorfik menggunakan **Strict Morph Map** (`Relation::enforceMorphMap`).
-3. Mengidentifikasi, mengukur, dan mengeliminasi masalah performa **N+1 Query Problem** menggunakan **Eager Loading**, **Constrained Eager Loading**, dan `withCount()`.
-4. Mengaktifkan fitur **Strict Mode & Prevent Lazy Loading** (`Model::preventLazyLoading()`) di lingkungan lokal untuk mendeteksi *code smell* N+1 query secara otomatis.
+3. Mengidentifikasi, mengukur, dan mengeliminasi masalah performa **N+1 Query Problem** menggunakan **Eager Loading**, **Constrained Eager Loading**, **Subquery Selects (`addSelect`)**, dan `withCount()`.
+4. Mengaudit performa aplikasi menggunakan **Laravel Debugbar** dan mengaktifkan **Strict Mode (`Model::preventLazyLoading()`)** di lingkungan lokal.
 5. Membangun **Local Scopes** dan **Global Scopes** untuk menghasilkan kueri data yang *clean*, modular, dan reusable.
 
 ---
@@ -18,7 +18,7 @@ Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
 #### 1. Relasi Kompleks pada Eloquent ORM
 
 ##### A. Many-to-Many dengan Custom Pivot Model
-Tabel pivot sering kali memiliki atribut tambahan (misal: tanggal penugasan, status, catatan). Alih-alih menggunakan pivot standar bawaan, kita buat model pivot kustom:
+Tabel pivot sering kali memiliki atribut tambahan (misal: tanggal penugasan, status, catatan). Alih-alih menggunakan pivot standar bawaan, kita buat model pivot kustom turunan `Illuminate\Database\Eloquent\Relations\Pivot`:
 
 ```php
 namespace App\Models;
@@ -47,41 +47,57 @@ public function roles()
 }
 ```
 
-##### B. Polymorphic Relations (Relasi Polimorfik)
-Satu model dapat memiliki relasi ke beberapa model lain menggunakan satu tabel yang sama.
-
-**Kasus Nyata:** Fitur Komentar (`Comment`) yang bisa diberikan pada `Post` artikel maupun `Video` pembelajaran.
-
-1. **Struktur Migration Komentar:**
+##### B. Relasi Has-Many-Through
+Mengakses relasi jarak jauh melalui model perantara.  
+**Contoh:** Satu `Department` memiliki banyak `Lecturer`, dan setiap `Lecturer` memiliki banyak `Course`. Department bisa langsung mengakses seluruh Course:
 ```php
-Schema::create('comments', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-    $table->text('body');
-    // Menghasilkan commentable_type (string) dan commentable_id (unsignedBigInteger)
-    $table->morphs('commentable'); 
-    $table->timestamps();
-});
-```
+namespace App\Models;
 
-2. **Definisi di Model `Comment`:**
-```php
-public function commentable()
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+
+class Department extends Model
 {
-    return $this->morphTo();
+    public function courses(): HasManyThrough
+    {
+        // hasManyThrough(TargetModel, IntermediateModel)
+        return $this->hasManyThrough(Course::class, Lecturer::class);
+    }
 }
 ```
 
-3. **Definisi di Model `Post` dan `Video`:**
-```php
-public function comments()
-{
-    return $this->morphMany(Comment::class, 'commentable');
-}
-```
+##### C. Relasi Polimorfik (One-to-Many & Many-to-Many)
+1. **One-to-Many Polymorphic (Contoh: Komentar untuk Post & Video):**
+   - Migration: `$table->morphs('commentable');` (kolom `commentable_id` & `commentable_type`).
+   - Model `Comment`: `$this->morphTo();`
+   - Model `Post` / `Video`: `$this->morphMany(Comment::class, 'commentable');`
 
-##### C. Best Practice: Strict Morph Map
-Secara default, Laravel menyimpan nama class lengkap (misal: `App\Models\Post`) di kolom `commentable_type`. Ini sangat berbahaya jika suatu saat namespace class di-refactor!
+2. **Many-to-Many Polymorphic (Contoh: Tagging untuk Post & Video):**
+   - Migration tabel pivot `taggables`:
+     ```php
+     Schema::create('taggables', function (Blueprint $table) {
+         $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+         $table->morphs('taggable'); // taggable_id & taggable_type
+         $table->unique(['tag_id', 'taggable_id', 'taggable_type']);
+     });
+     ```
+   - Model `Post` / `Video`:
+     ```php
+     public function tags()
+     {
+         return $this->morphToMany(Tag::class, 'taggable');
+     }
+     ```
+   - Model `Tag`:
+     ```php
+     public function posts()
+     {
+         return $this->morphedByMany(Post::class, 'taggable');
+     }
+     ```
+
+##### D. Best Practice: Strict Morph Map
+Secara default, Laravel menyimpan nama class lengkap (misal: `App\Models\Post`) di kolom `commentable_type`. Ini sangat berbahaya jika struktur folder atau namespace di-refactor!
 
 **Solusi:** Daftarkan alias morph di `app/Providers/AppServiceProvider.php`:
 ```php
@@ -95,7 +111,6 @@ public function boot(): void
     ]);
 }
 ```
-*Hasil:* Di database hanya tersimpan string pendek `'post'` atau `'video'`.
 
 ---
 
@@ -115,40 +130,46 @@ $books = Book::all(); // Query 1: Mengambil 50 buku
     {{-- Query N: Dieksekusi 1 kali per iterasi buku (50 query tambahan!) --}}
 @endforeach
 ```
-**Total:** $1 + 50 = 51$ Query SQL ke database hanya untuk menampilkan 1 halaman sederhana! Jika ada 1.000 buku, maka ada 1.001 query! Server database akan kehabisan *connection pool* dan aplikasi menjadi sangat lambat.
+**Total:** $1 + 50 = 51$ Query SQL ke database hanya untuk menampilkan 1 halaman sederhana!
 
-##### B. Cara Mendeteksi Otomatis: `preventLazyLoading()`
-Mulai Laravel modern, kita bisa memerintahkan framework untuk **melempar Exception error** jika ada developer yang tidak sengaja menulis kode N+1 di lokal development:
-
+##### B. Deteksi Otomatis dengan `preventLazyLoading()`
 Buka `app/Providers/AppServiceProvider.php`:
 ```php
 use Illuminate\Database\Eloquent\Model;
 
 public function boot(): void
 {
-    // Hanya aktif di local / staging, dinonaktifkan di production agar web tidak crash
+    // Melempar exception jika terjadi Lazy Loading di local development
     Model::preventLazyLoading(! app()->isProduction());
 }
 ```
-Jika terjadi lazy loading di Blade/Controller, Laravel langsung memunculkan layar merah:  
-*`Attempted to lazy load [author] on model [App\Models\Book] but lazy loading is disabled.`*
 
 ---
 
 #### 3. Strategi Optimasi Eager Loading
 
 ##### A. Basic & Nested Eager Loading
-Eager loading menggunakan `with()` untuk mengambil data relasi sekaligus via klausa `WHERE IN`:
+Mengambil data relasi sekaligus menggunakan klausa `WHERE IN`:
 ```php
-// Mengambil 50 buku dan seluruh penulisnya hanya dalam 2 query SQL!
+// Mengambil 50 buku dan seluruh penulisnya hanya dalam 2 query SQL:
 $books = Book::with('author')->get();
 
-// Nested Eager Loading: Ambil postingan, beserta komentar dan penulis komentarnya:
+// Nested Eager Loading: Ambil postingan beserta komentar dan user penulisnya:
 $posts = Post::with(['author', 'comments.user'])->get();
 ```
 
-##### B. Constrained Eager Loading (Penyaringan Relasi)
-Hanya memuat data relasi anak yang memenuhi kriteria tertentu:
+##### B. Eager Loading Spesifik Kolom (*Sparse Fieldsets*)
+> [!WARNING]
+> **Jebakan Klasik:** Saat membatasi kolom relasi (misal: `author:name`), Anda **WAJIB menyertakan kolom `id`** (dan foreign key jika ada), jika tidak relasi akan menghasilkan `null`!
+> ```php
+> // ❌ SALAH: Relasi author akan bernilai NULL!
+> Book::with('author:name')->get();
+> 
+> // ✅ BENAR: Kolom 'id' disertakan
+> Book::with('author:id,name,avatar')->get();
+> ```
+
+##### C. Constrained Eager Loading (Penyaringan Relasi)
 ```php
 $posts = Post::with(['comments' => function ($query) {
     $query->where('is_approved', true)
@@ -157,17 +178,28 @@ $posts = Post::with(['comments' => function ($query) {
 }])->get();
 ```
 
-##### C. Agregasi Efisien: `withCount()`, `withSum()`, `withAvg()`
-> [!TIP]
-> **Jangan pernah memuat relasi hanya untuk menghitung jumlahnya!**  
-> ❌ Buruk: `$post->comments->count()` (memuat ratusan objek komentar ke RAM hanya untuk dihitung).  
-> ✅ Optimal: `Post::withCount('comments')->get()` (dihitung langsung di level SQL via subquery `SELECT COUNT(*)`).
-
-Nilai hasil hitung otomatis tersedia di atribut `comments_count`:
+##### D. Agregasi Efisien: `withCount()`, `withSum()`, `withAvg()`
+Alih-alih memuat seluruh baris relasi ke RAM hanya untuk dihitung (`$post->comments->count()`), gunakan `withCount()` yang dieksekusi langsung di SQL:
 ```php
-@foreach ($posts as $post)
-    <span>Jumlah Komentar: {{ $post->comments_count }}</span>
-@endforeach
+$posts = Post::withCount('comments')->get();
+// Nilai otomatis tersedia di atribut: $post->comments_count
+```
+
+##### E. Subquery Selects (`addSelect()`)
+Teknik senior untuk mengambil satu data spesifik dari tabel relasi tanpa harus me-load objek relasi penuh atau melakukan JOIN tabel yang berat:
+```php
+use App\Models\Comment;
+
+$posts = Post::addSelect([
+    'latest_comment_body' => Comment::select('content')
+        ->whereColumn('commentable_id', 'posts.id')
+        ->where('commentable_type', 'post')
+        ->latest()
+        ->take(1)
+])->get();
+
+// Nilai langsung dapat diakses sebagai atribut virtual:
+// $post->latest_comment_body
 ```
 
 ---
@@ -175,8 +207,6 @@ Nilai hasil hitung otomatis tersedia di atribut `comments_count`:
 #### 4. Reusable Query: Local Scopes & Global Scopes
 
 ##### A. Local Query Scopes
-Menyimpan potongan kueri umum yang sering dipakai ke dalam method model berawalan `scope`:
-
 ```php
 namespace App\Models;
 
@@ -192,63 +222,64 @@ class Post extends Model
               ->whereNotNull('published_at');
     }
 
-    // Local Scope 2: Berdasarkan Kategori Populer (Menerima Argumen)
+    // Local Scope 2: Dinamis dengan parameter
     public function scopePopular(Builder $query, int $minViews = 1000): void
     {
         $query->where('views_count', '>=', $minViews);
     }
 }
 ```
-
-Pemanggilan yang elegan dan ekspresif:
+Pemanggilan:
 ```php
 $trendingPosts = Post::published()->popular(5000)->latest()->get();
 ```
 
-##### B. Global Query Scopes
-Otomatis menerapkan filter pada *setiap* query yang dipanggil ke model tersebut (misal: filter multi-tenant atau hanya menampilkan akun yang aktif):
-
+##### B. Global Query Scopes & Anonymous Global Scope
+Filter otomatis yang diterapkan pada setiap kueri model:
 ```php
-namespace App\Models\Scopes;
-
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Scope;
-
-class ActiveScope implements Scope
-{
-    public function apply(Builder $builder, Model $model): void
-    {
-        $builder->where('is_active', true);
-    }
-}
-```
-Mendaftarkan scope di Model:
-```php
-use App\Models\Scopes\ActiveScope;
-
+// Anonymous Global Scope di method booted()
 protected static function booted(): void
 {
-    static::addGlobalScope(new ActiveScope);
+    static::addGlobalScope('active', function (Builder $builder) {
+        $builder->where('is_active', true);
+    });
 }
 ```
-Bypass scope jika admin ingin melihat seluruh data termasuk yang non-aktif:
+Bypass global scope saat dibutuhkan:
 ```php
-$allUsers = User::withoutGlobalScope(ActiveScope::class)->get();
+$allRecords = Post::withoutGlobalScope('active')->get();
 ```
+
+---
+
+#### 5. Audit Kueri dengan Laravel Debugbar
+
+Untuk memantau jumlah kueri dan penggunaan memori secara visual di browser:
+```bash
+composer require barryvdh/laravel-debugbar --dev
+```
+Setelah terpasang, saat membuka aplikasi di browser, panel Debugbar akan muncul di bagian bawah layar:
+- Tab **Queries**: Menampilkan seluruh kueri SQL, waktu eksekusi dalam milidetik, dan **menandai kueri duplikat/N+1 dengan warna merah** secara otomatis.
 
 ---
 
 ### III. LANGKAH PRAKTIKUM LABORATORIUM
 
-#### Langkah 1: Eksperimen Deteksi N+1 di `AppServiceProvider`
-Buka `app/Providers/AppServiceProvider.php`, aktifkan fitur pencegahan lazy loading:
+#### Langkah 1: Aktivasi Strict Mode di `AppServiceProvider`
+Buka `app/Providers/AppServiceProvider.php`:
 ```php
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 public function boot(): void
 {
+    // Cegah N+1 di local development
     Model::preventLazyLoading(! $this->app->isProduction());
+
+    // Strict Morph Map
+    Relation::enforceMorphMap([
+        'course'  => \App\Models\Course::class,
+    ]);
 }
 ```
 
@@ -260,7 +291,6 @@ Buat migration tabel komentar polimorfik:
 php artisan make:migration create_comments_table
 ```
 
-Isi berkas migrasi:
 ```php
 Schema::create('comments', function (Blueprint $table) {
     $table->id();
@@ -270,7 +300,7 @@ Schema::create('comments', function (Blueprint $table) {
     $table->boolean('is_approved')->default(true);
     $table->timestamps();
 
-    // Composite index untuk kecepatan pencarian komentar per entitas
+    // Composite index untuk pencarian cepat
     $table->index(['commentable_type', 'commentable_id', 'is_approved']);
 });
 ```
@@ -281,8 +311,8 @@ php artisan migrate
 
 ---
 
-#### Langkah 3: Menghubungkan Relasi Model
-Buka model `app/Models/Comment.php`:
+#### Langkah 3: Menghubungkan Relasi Polimorfik
+Buka `app/Models/Comment.php`:
 ```php
 namespace App\Models;
 
@@ -306,7 +336,7 @@ class Comment extends Model
 }
 ```
 
-Buka model `app/Models/Course.php`, tambahkan relasi polimorfik:
+Buka `app/Models/Course.php`:
 ```php
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -329,7 +359,7 @@ Route::get('/benchmark-query', function () {
     $startTime = microtime(true);
 
     // Kueri Teroptimasi: Eager loading kategori, komentar, dan hitung jumlah komentar
-    $courses = Course::with(['category', 'comments.user'])
+    $courses = Course::with(['category:id,name,slug', 'comments.user:id,name'])
         ->withCount('comments')
         ->published()
         ->take(30)
