@@ -1,11 +1,11 @@
 # Direktori Materi Perkuliahan & Modul Praktikum
 ## Pemrograman Web Lanjut (16 Pertemuan)
 
-Tabel berikut memuat daftar seluruh modul perkuliahan, panduan lab, studi kasus, dan tugas praktikum.
+Tabel berikut memuat daftar seluruh modul perkuliahan, panduan lab, skenario ajar (RPP), rubrik penilaian, studi kasus, dan tugas praktikum.
 
-| Pertemuan | Topik / Modul | Status | Tautan Modul |
+| Pertemuan | Topik / Modul | Status | Perangkat Pembelajaran Tersedia |
 | :---: | :--- | :---: | :--- |
-| **01** | **Transisi Native PHP ke Modern PHP 8.x & Request Lifecycle Laravel** | 🟢 Tersedia | [Modul 01](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/MODUL-PRAKTIKUM.md) |
+| **01** | **Transisi Native PHP ke Modern PHP 8.x, PSR-4, & Request Lifecycle Laravel** | 🟢 Lengkap | • [Modul Praktikum Mahasiswa](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/MODUL-PRAKTIKUM.md)<br>• [Skenario Pembelajaran (RPP)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/LESSON-PLAN-RPP.md)<br>• [Rubrik Penilaian Asdos & Solusi](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/RUBRIK-PENILAIAN-ASDOS.md)<br>• [Lembar Tugas 01](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md)<br>• [Studi Kasus 01 (Legacy)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/01-native-legacy.php)<br>• [Studi Kasus 02 (Modern Refactored)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php) |
 | **02** | Advanced Routing, Controllers Pattern & Form Request Validation | 🟡 Segera Hadir | `materi/pertemuan-02/` |
 | **03** | Database Engineering: Schema Migration, Seeding & Model Factory | 🟡 Segera Hadir | `materi/pertemuan-03/` |
 | **04** | Deep Dive Eloquent ORM: Complex Relationships & N+1 Optimization | 🟡 Segera Hadir | `materi/pertemuan-04/` |
@@ -14,7 +14,7 @@ Tabel berikut memuat daftar seluruh modul perkuliahan, panduan lab, studi kasus,
 | **07** | File Management, Media Handling & Cloud Storage Abstraction | 🟡 Segera Hadir | `materi/pertemuan-07/` |
 | **08** | **UJIAN TENGAH SEMESTER (UTS) — Review Milestone Proyek 1** | 📅 Terjadwal | [Panduan UTS](file:///c:/Users/anton/vibecoding/weblanjut/KONTRAK-KULIAH-DAN-PANDUAN-PROYEK.md#iii-panduan-proyek-tengah-semester-uts--milestone-1) |
 | **09** | RESTful API Engineering, Versioning & Eloquent API Resources | 🟡 Segera Hadir | `materi/pertemuan-09/` |
-| **10** | API Security: Token Auth (Laravel Sanctum), Throttling & CORS | 🟡 Segera Hadir | `materi/pertemuan-10/` |
+| **10** | API Security: Token Auth (Laravel Sanctum), Throttling & CORS | 🟡 Segera Hadir | `materi/pertemuan-09/` |
 | **11** | Modern Frontend Integration: Monolith Modern dengan Inertia.js (React/Vue) | 🟡 Segera Hadir | `materi/pertemuan-11/` |
 | **12** | Asynchronous Processing: Queue, Background Jobs & Task Scheduling | 🟡 Segera Hadir | `materi/pertemuan-12/` |
 | **13** | Real-Time Web: Event Broadcasting & WebSockets (Laravel Reverb) | 🟡 Segera Hadir | `materi/pertemuan-13/` |

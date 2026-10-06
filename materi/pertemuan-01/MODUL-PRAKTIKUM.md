@@ -7,9 +7,10 @@
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
 1. Mengidentifikasi kelemahan mendasar kode web PHP native (prosedural, pencampuran logika & tampilan, serta risiko keamanan fatal).
 2. Memahami bagaimana **Composer PSR-4 Autoloading & Namespace** menggantikan ketergantungan terhadap `include` / `require_once`.
-3. Menerapkan fitur-fitur esensial modern PHP 8.x (*Constructor Property Promotion, Match Expression, Nullsafe Operator, Named Arguments, Readonly Class, dan Type Hinting*).
-4. Memahami struktur minimalis framework **Laravel versi terbaru (11.x/12.x)** dan siklus hidup permintaan HTTP (*Request Lifecycle*).
+3. Menerapkan fitur-fitur esensial modern PHP 8.x (*Constructor Property Promotion, Match Expression, Nullsafe Operator, Named Arguments, Readonly Class, Attributes, Union Types, dan Type Hinting*).
+4. Memahami struktur minimalis framework **Laravel versi terbaru (11.x/12.x)**, peran Service Providers (`AppServiceProvider`), dan siklus hidup permintaan HTTP (*Request Lifecycle*).
 5. Menguasai manajemen environment (`.env`), enkripsi `APP_KEY`, serta perkakas CLI (`php artisan serve`, `route:list`, dan `tinker`).
+6. Mengimplementasikan alur kerja **Git Workflow & Conventional Commits** pada project Laravel.
 
 ---
 
@@ -42,7 +43,15 @@ require_once 'helper/fungsi.php';
 Kelemahannya: Rawan *duplicate declaration error*, jalur path relatif yang rapuh (*fragile paths*), dan beban memori jika file di-load padahal tidak digunakan.
 
 **Solusi Modern (PSR-4 Autoloading via Composer):**
-Composer memetakan *Namespace* ke struktur folder secara otomatis. Cukup panggil class via keyword `use`:
+Composer memetakan *Namespace* ke struktur folder secara otomatis berdasarkan berkas `composer.json`:
+```json
+"autoload": {
+    "psr-4": {
+        "App\\": "app/"
+    }
+}
+```
+Ketika Anda memanggil class:
 ```php
 namespace App\Services;
 
@@ -67,6 +76,7 @@ class Student {
 ```
 
 ##### B. Match Expression (Strict, Safe, dan Menghasilkan Nilai)
+Menggantikan `switch-case` dengan strict comparison (`===`):
 ```php
 $status = 'A';
 
@@ -112,6 +122,24 @@ readonly class UserProfile {
 }
 ```
 
+##### F. Union Types & Mixed Type
+Mendukung lebih dari satu tipe data yang valid tanpa kehilangan keuntungan *type checking*:
+```php
+function hitungDiskon(int|float $totalBelanja): float {
+    return $totalBelanja * 0.1;
+}
+```
+
+##### G. Attributes (`#[...]`)
+Fitur metadata native terstruktur yang menggantikan komentar DocBlock usang (`/** @param ... */`):
+```php
+// Contoh pemanfaatan Attribute di PHP 8.3+:
+#[Override]
+public function toJson(): string {
+    return json_encode($this);
+}
+```
+
 ---
 
 ### IV. ANATOMI SIKLUS HIDUP REQUEST & STRUKTUR BARU LARAVEL (11.x / 12.x)
@@ -121,8 +149,13 @@ readonly class UserProfile {
 > Mulai Laravel 11.x, direktori aplikasi dirampingkan (*Slim Skeleton*). 
 > - **TIDAK ADA LAGI** `app/Http/Kernel.php`.
 > - Konfigurasi Middleware, Routing, dan Exceptions dipusatkan di file `bootstrap/app.php`.
+> - Konfigurasi global aplikasi kini cukup diatur melalui `app/Providers/AppServiceProvider.php`.
 
-#### Diagram Alur Request Lifecycle:
+#### 1. Peran `AppServiceProvider.php`
+- `register()`: Tempat mendaftarkan service container bindings (sebelum aplikasi dibootstrap).
+- `boot()`: Tempat mengeksekusi logika setelah seluruh layanan teregistrasi (misal: konfigurasi paginasi Bootstrap/Tailwind, observer model, dan macro).
+
+#### 2. Diagram Alur Request Lifecycle:
 ```
 [User Browser / Postman]
        │
@@ -168,7 +201,7 @@ Buka terminal pada repositori mata kuliah ini dan jalankan skrip studi kasus ref
 ```bash
 php materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php
 ```
-Pelajari bagaimana data DTO, enum, dan query PDO prepared statements bekerja secara independen.
+Pelajari bagaimana data DTO, enum, dan query PDO prepared statements bekerja secara independen tanpa bercampur kode HTML.
 
 ---
 
@@ -233,6 +266,27 @@ decrypt($rahasia);
 // Keluar dari tinker
 exit;
 ```
+
+---
+
+#### Langkah 5: Praktik Git Workflow & Conventional Commits
+Di dalam folder project `praktikum-01-weblanjut`:
+1. Periksa berkas `.gitignore` bawaan Laravel. Amati bahwa folder `vendor/`, `node_modules/`, dan file `.env` sudah otomatis diabaikan oleh Git.
+2. Cek status repositori:
+   ```bash
+   git status
+   ```
+3. Lakukan commit pertama dengan format standar *Conventional Commits*:
+   ```bash
+   git add .
+   git commit -m "feat: inisialisasi project laravel dan eksperimen request lifecycle"
+   ```
+4. Buat repositori baru di akun GitHub masing-masing (`weblanjut-praktikum-01`), lalu hubungkan dan push:
+   ```bash
+   git branch -M main
+   git remote add origin https://github.com/<username-anda>/weblanjut-praktikum-01.git
+   git push -u origin main
+   ```
 
 ---
 
