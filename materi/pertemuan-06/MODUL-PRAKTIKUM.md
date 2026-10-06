@@ -254,18 +254,36 @@ namespace App\Policies;
 
 use App\Models\Course;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class CoursePolicy
 {
-    public function update(User $user, Course $course): bool
+    /**
+     * Tentukan apakah user boleh mengedit kursus.
+     */
+    public function update(User $user, Course $course): Response
     {
-        // Hanya dosen pembuat atau user dengan izin khusus yang boleh mengedit
-        return $user->id === $course->instructor_id || $user->hasRole('super-admin');
+        // Catatan: Kita TIDAK PERLU menulis "|| $user->hasRole('super-admin')" di sini!
+        // Super admin otomatis lolos lewat Gate::before() hook di AppServiceProvider.
+        return $user->id === $course->instructor_id
+            ? Response::allow()
+            : Response::deny('Akses ditolak: Anda bukan dosen pengampu kursus ini.');
     }
 
-    public function delete(User $user, Course $course): bool
+    /**
+     * Tentukan apakah user boleh menghapus kursus.
+     */
+    public function delete(User $user, Course $course): Response
     {
-        return $user->id === $course->instructor_id && $course->enrollments()->count() === 0;
+        if ($user->id !== $course->instructor_id) {
+            return Response::deny('Akses ditolak: Anda tidak memiliki izin menghapus kursus milik dosen lain.');
+        }
+
+        if ($course->enrollments()->count() > 0) {
+            return Response::deny('Kursus tidak dapat dihapus karena sudah memiliki mahasiswa aktif yang terdaftar.');
+        }
+
+        return Response::allow();
     }
 }
 ```
@@ -273,20 +291,33 @@ class CoursePolicy
 ---
 
 #### Langkah 3: Konfigurasi Super Admin Bypass di `AppServiceProvider`
-Buka `app/Providers/AppServiceProvider.php`, tambahkan hook di method `boot()`:
+Buka `app/Providers/AppServiceProvider.php`, daftarkan hook di method `boot()`:
 ```php
+namespace App\Providers;
+
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
 
-public function boot(): void
+class AppServiceProvider extends ServiceProvider
 {
-    Gate::before(function (User $user, string $ability) {
-        if ($user->hasRole('super-admin')) {
-            return true;
-        }
-    });
+    public function boot(): void
+    {
+        // Super Admin Bypass Hook:
+        // Jika callback mengembalikan nilai `true`, seluruh pengecekan Gate & Policy otomatis lolos!
+        // Jika mengembalikan `null`, Laravel akan melanjutkan evaluasi ke Policy/Gate terkait.
+        Gate::before(function (User $user, string $ability) {
+            return $user->hasRole('super-admin') ? true : null;
+        });
+    }
 }
 ```
+
+> [!TIP]
+> **Gotcha Cache Spatie:** Spatie menyimpan izin dan peran pengguna di memori cache aplikasi. Jika Anda mengubah permission di database atau seeder tetapi hak akses tidak berubah, jalankan perintah reset cache:
+> ```bash
+> php artisan permission:cache-reset
+> ```
 
 ---
 

@@ -16,26 +16,46 @@ namespace App\Policies;
 
 use App\Models\Course;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class CoursePolicy
 {
     /**
      * Memeriksa apakah pengguna berhak mengedit kursus.
      */
-    public function update(User $user, Course $course): bool
+    public function update(User $user, Course $course): Response
     {
-        // Pengguna memiliki izin 'edit courses' DAN merupakan pemilik sah kursus
-        return $user->can('edit courses') && $user->id === $course->instructor_id;
+        // 1. Cek permission global Spatie
+        if (! $user->can('edit courses')) {
+            return Response::deny('Anda tidak memiliki permission untuk mengedit kursus.');
+        }
+
+        // 2. Cek kepemilikan resource (hanya dosen pengampu)
+        if ($user->id !== $course->instructor_id) {
+            return Response::deny('Anda bukan dosen pengampu kursus ini.');
+        }
+
+        return Response::allow();
     }
 
     /**
      * Memeriksa apakah pengguna berhak menghapus kursus.
      */
-    public function delete(User $user, Course $course): bool
+    public function delete(User $user, Course $course): Response
     {
-        return $user->can('delete courses') && 
-               $user->id === $course->instructor_id && 
-               $course->enrollments()->doesntExist();
+        if (! $user->can('delete courses')) {
+            return Response::deny('Anda tidak memiliki permission untuk menghapus kursus.');
+        }
+
+        if ($user->id !== $course->instructor_id) {
+            return Response::deny('Anda tidak berhak menghapus kursus milik dosen lain.');
+        }
+
+        if ($course->enrollments()->exists()) {
+            return Response::deny('Kursus tidak dapat dihapus karena sudah memiliki mahasiswa terdaftar.');
+        }
+
+        return Response::allow();
     }
 }
 
