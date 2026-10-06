@@ -1,15 +1,16 @@
-# MODUL PRAKTIKUM 05
-## Topik: Enterprise Architecture: Service Layer, DTO & Dependency Injection
+# MODUL PRAKTIKUM 05 (EDISI LENGKAP & REVISI)
+## Topik: Enterprise Architecture: Service Layer, DTO, Repository Pattern & Dependency Injection
 
 ---
 
 ### I. TUJUAN PEMBELAJARAN
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
 1. Mendiagnosis dan mengeliminasi anti-pattern **Fat Controller** dengan menerapkan prinsip *Single Responsibility Principle* (SRP).
-2. Merancang dan mengimplementasikan **Service Layer** murni yang terisolasi dari lapisan HTTP (*HTTP-agnostic*).
-3. Membangun **Data Transfer Objects (DTO)** bertipe ketat (*strongly-typed*) menggunakan fitur modern PHP 8.x (*readonly class & named constructors*).
-4. Menerapkan pola **Action Classes** untuk mengenkapsulasi proses bisnis spesifik.
-5. Memanfaatkan **Laravel Service Container** untuk menerapkan **Inversion of Control (IoC)** dan **Dependency Injection (DI)** berbasis Interface.
+2. Membangun **Data Transfer Objects (DTO)** bertipe ketat (*strongly-typed*) menggunakan fitur modern PHP 8.x (*readonly class & named constructors*).
+3. Merancang dan mengimplementasikan **Service Layer** murni yang terisolasi dari lapisan HTTP (*HTTP-agnostic*).
+4. Menerapkan **Repository Pattern** untuk memisahkan logika persistensi kueri basis data dari logika proses bisnis.
+5. Memanfaatkan **Laravel Service Container**: perbedaan binding `bind()`, `singleton()`, dan `scoped()`.
+6. Mengeliminasi boilerplate `try-catch` pada Controller menggunakan **Renderable Domain Exceptions**.
 
 ---
 
@@ -36,7 +37,7 @@ Pada aplikasi pemula, sebuah method Controller sering kali menampung semua hal:
 
 ---
 
-#### 2. Pola Arsitektur Berlapis (Layered Architecture)
+#### 2. Pola Arsitektur Berlapis Lengkap (Enterprise Layered Architecture)
 
 Standar pemisahan tanggung jawab pada aplikasi enterprise:
 
@@ -49,8 +50,11 @@ Standar pemisahan tanggung jawab pada aplikasi enterprise:
                               ▼ (Passing DTO)
                          [Service Layer]          (Business Logic Murni, DB Transaction)
                               │
+                              ▼ (Panggil Repository)
+                    [Repository Interface]        (Abstraksi Akses Data)
+                              │
                               ▼
-                         [Eloquent Model / DB]    (Penyimpanan Data)
+                    [Eloquent Repository]         (Kueri ORM ke Database)
 ```
 
 ---
@@ -100,112 +104,106 @@ readonly class EnrollmentData
 > 2. **Dilarang keras memanggil helper `response()`, `redirect()`, atau `session()` di dalam Service!**
 > 3. Service hanya bertugas mengeksekusi logika bisnis, memanipulasi database, dan me-return Model / DTO / boolean atau melempar Exception jika gagal.
 
-Contoh Kerangka Service Layer:
-```php
-namespace App\Services;
-
-use App\DTOs\EnrollmentData;
-use App\Models\Enrollment;
-use Illuminate\Support\Facades\DB;
-
-class CourseEnrollmentService
-{
-    public function __construct(
-        private PaymentGatewayInterface $paymentGateway
-    ) {}
-
-    public function enroll(EnrollmentData $data): Enrollment
-    {
-        return DB::transaction(function () use ($data) {
-            // 1. Validasi Logika Bisnis (Cek apakah sudah pernah daftar)
-            // 2. Kalkulasi Biaya & Diskon Kupon
-            // 3. Proses Pembayaran via Payment Gateway
-            // 4. Simpan ke Database
-            // 5. Kembalikan instance Enrollment
-        });
-    }
-}
-```
-
 ---
 
-#### 5. Action Classes Pattern (Single-Action Services)
+#### 5. Repository Pattern: Abstraksi Data Persistence
 
-Jika sebuah Service mulai terlalu besar (*Fat Service*), gunakan **Action Classes**. Satu kelas hanya bertanggung jawab terhadap satu aksi spesifik:
-- `ApplyCouponAction`
-- `ProcessPaymentAction`
-- `SendEnrollmentNotificationAction`
+Repository Pattern memisahkan logika proses bisnis (Service) dari detail kueri database (ORM).
 
-Setiap Action Class memiliki satu method publik: `execute()`:
+1. **Repository Interface (Kontrak):**
 ```php
-namespace App\Actions;
+namespace App\Contracts\Repositories;
 
 use App\Models\Course;
+use Illuminate\Database\Eloquent\Collection;
 
-class CalculateDiscountAction
+interface CourseRepositoryInterface
 {
-    public function execute(Course $course, ?string $couponCode): int
-    {
-        if ($couponCode === 'DISKON50') {
-            return (int) ($course->price * 0.5);
-        }
+    public function findActive(int $id): ?Course;
+    public function getPopularCourses(int $limit = 10): Collection;
+}
+```
 
-        return $course->price;
+2. **Implementasi Eloquent Repository:**
+```php
+namespace App\Repositories;
+
+use App\Contracts\Repositories\CourseRepositoryInterface;
+use App\Models\Course;
+use Illuminate\Database\Eloquent\Collection;
+
+class EloquentCourseRepository implements CourseRepositoryInterface
+{
+    public function findActive(int $id): ?Course
+    {
+        return Course::where('id', $id)
+            ->where('status', 'published')
+            ->first();
+    }
+
+    public function getPopularCourses(int $limit = 10): Collection
+    {
+        return Course::published()
+            ->withCount('comments')
+            ->orderByDesc('views_count')
+            ->take($limit)
+            ->get();
     }
 }
 ```
+
+> [!TIP]
+> **Kapan Repository Pattern Tepat vs Over-Engineering?**
+> - **Tepat:** Pada aplikasi skala menengah-besar, ketika kueri database sangat kompleks, saat menerapkan caching decorator, atau saat menerapkan Domain-Driven Design (DDD).
+> - **Over-Engineering:** Jika repository hanya membungkus kueri standar seperti `$this->model->find($id)` atau `$this->model->all()`. Eloquent sendiri sudah merupakan Active Record ORM yang sangat kuat.
 
 ---
 
-#### 6. Inversion of Control (IoC) & Interface Binding
+#### 6. Inversion of Control (IoC): `bind()` vs `singleton()` vs `scoped()`
 
-Alih-alih bergantung langsung pada library konkret (misal: Midtrans SDK), kita buat abstraksi interface agar sistem mudah diuji dan diganti sewaktu-waktu:
+Pendaftaran di `app/Providers/AppServiceProvider.php`:
+- **`$this->app->bind()`**: Membuat instance baru setiap kali di-inject (cocok untuk service stateless).
+  ```php
+  $this->app->bind(PaymentGatewayInterface::class, MidtransPaymentGateway::class);
+  ```
+- **`$this->app->singleton()`**: Membuat instance sekali, lalu di-cache dan digunakan kembali sepanjang request lifecycle (cocok untuk service koneksi API, logger, atau driver stateful).
+  ```php
+  $this->app->singleton(CourseRepositoryInterface::class, EloquentCourseRepository::class);
+  ```
+- **`$this->app->scoped()`**: Instance bertahan selama lifecycle satu request, namun di-reset pada request berikutnya (sangat krusial untuk Laravel Octane / Queue Worker).
 
-1. **Definisi Interface:**
+---
+
+#### 7. Renderable Domain Exceptions (Eliminasi Boilerplate `try-catch`)
+
+Alih-alih menulis blok `try-catch` berulang-ulang di setiap method Controller, buatlah **Custom Renderable Exception**:
+
 ```php
-namespace App\Contracts;
+namespace App\Exceptions;
 
-interface PaymentGatewayInterface
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class CourseAlreadyEnrolledException extends Exception
 {
-    public function charge(int $amount, string $paymentMethod): string;
-}
-```
-
-2. **Implementasi Konkret:**
-```php
-namespace App\Services\Payment;
-
-use App\Contracts\PaymentGatewayInterface;
-
-class MidtransPaymentGateway implements PaymentGatewayInterface
-{
-    public function charge(int $amount, string $paymentMethod): string
+    public function render(Request $request): JsonResponse
     {
-        // Panggilan riil ke API Midtrans
-        return 'TRX-' . strtoupper(uniqid());
+        return response()->json([
+            'status'  => 'error',
+            'message' => $this->getMessage(),
+        ], 422);
     }
 }
 ```
-
-3. **Binding di `app/Providers/AppServiceProvider.php`:**
-```php
-use App\Contracts\PaymentGatewayInterface;
-use App\Services\Payment\MidtransPaymentGateway;
-
-public function register(): void
-{
-    // Daftarkan ke Laravel Service Container
-    $this->app->bind(PaymentGatewayInterface::class, MidtransPaymentGateway::class);
-}
-```
-Ketika Service membutuhkan `PaymentGatewayInterface`, Laravel otomatis menyuntikkan `MidtransPaymentGateway` secara otomatis (*Automatic Dependency Injection*).
+Ketika Service melempar `throw new CourseAlreadyEnrolledException("Anda sudah terdaftar!");`, Laravel secara otomatis merender respons JSON HTTP 422 tanpa perlu blok `try-catch` di Controller!
 
 ---
 
 ### III. LANGKAH PRAKTIKUM LABORATORIUM
 
-#### Langkah 1: Merancang Interface & Kontrak
-Buat folder `app/Contracts/` dan berkas `PaymentGatewayInterface.php`:
+#### Langkah 1: Merancang Kontrak Repository & Payment Gateway
+Buat berkas kontrak di `app/Contracts/PaymentGatewayInterface.php`:
 ```php
 namespace App\Contracts;
 
@@ -230,21 +228,52 @@ class DummyPaymentGateway implements PaymentGatewayInterface
 }
 ```
 
-Daftarkan di `app/Providers/AppServiceProvider.php`:
+Buat kontrak repository di `app/Contracts/Repositories/CourseRepositoryInterface.php`:
+```php
+namespace App\Contracts\Repositories;
+
+use App\Models\Course;
+
+interface CourseRepositoryInterface
+{
+    public function findPublished(int $id): ?Course;
+}
+```
+
+Buat implementasi di `app/Repositories/EloquentCourseRepository.php`:
+```php
+namespace App\Repositories;
+
+use App\Contracts\Repositories\CourseRepositoryInterface;
+use App\Models\Course;
+
+class EloquentCourseRepository implements CourseRepositoryInterface
+{
+    public function findPublished(int $id): ?Course
+    {
+        return Course::where('id', $id)->where('status', 'published')->first();
+    }
+}
+```
+
+Daftarkan seluruh binding di `app/Providers/AppServiceProvider.php`:
 ```php
 use App\Contracts\PaymentGatewayInterface;
 use App\Services\Payment\DummyPaymentGateway;
+use App\Contracts\Repositories\CourseRepositoryInterface;
+use App\Repositories\EloquentCourseRepository;
 
 public function register(): void
 {
     $this->app->bind(PaymentGatewayInterface::class, DummyPaymentGateway::class);
+    $this->app->singleton(CourseRepositoryInterface::class, EloquentCourseRepository::class);
 }
 ```
 
 ---
 
 #### Langkah 2: Membuat Data Transfer Object (DTO)
-Buat folder `app/DTOs/` dan berkas `EnrollmentData.php`:
+Buat berkas `app/DTOs/EnrollmentData.php`:
 ```php
 namespace App\DTOs;
 
@@ -261,53 +290,82 @@ readonly class EnrollmentData
 
 ---
 
-#### Langkah 3: Membuat Service Layer
-Buat folder `app/Services/` dan berkas `CourseEnrollmentService.php`:
+#### Langkah 3: Membuat Renderable Domain Exception
+Buat berkas `app/Exceptions/EnrollmentBusinessException.php`:
+```php
+namespace App\Exceptions;
+
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class EnrollmentBusinessException extends Exception
+{
+    public function render(Request $request): JsonResponse
+    {
+        return response()->json([
+            'status'  => 'error',
+            'message' => $this->getMessage(),
+        ], 422);
+    }
+}
+```
+
+---
+
+#### Langkah 4: Membuat Service Layer
+Buat berkas `app/Services/CourseEnrollmentService.php`:
 ```php
 namespace App\Services;
 
 use App\Contracts\PaymentGatewayInterface;
+use App\Contracts\Repositories\CourseRepositoryInterface;
 use App\DTOs\EnrollmentData;
-use App\Models\Course;
+use App\Exceptions\EnrollmentBusinessException;
 use App\Models\Enrollment;
 use Illuminate\Support\Facades\DB;
 
 class CourseEnrollmentService
 {
     public function __construct(
+        private CourseRepositoryInterface $courseRepository,
         private PaymentGatewayInterface $paymentGateway
     ) {}
 
     public function enroll(EnrollmentData $data): Enrollment
     {
         return DB::transaction(function () use ($data) {
-            $course = Course::findOrFail($data->courseId);
+            // 1. Ambil Kursus via Repository
+            $course = $this->courseRepository->findPublished($data->courseId);
+            if (!$course) {
+                throw new EnrollmentBusinessException("Kursus tidak ditemukan atau belum dipublikasikan.");
+            }
 
-            // 1. Cek duplikasi pendaftaran
-            $existing = Enrollment::where('user_id', $data->userId)
+            // 2. Cek Duplikasi
+            $alreadyEnrolled = Enrollment::where('user_id', $data->userId)
                 ->where('course_id', $data->courseId)
-                ->first();
+                ->exists();
 
-            if ($existing) {
-                throw new \DomainException("Anda sudah terdaftar pada kursus ini.");
+            if ($alreadyEnrolled) {
+                throw new EnrollmentBusinessException("Anda sudah terdaftar di kursus ini.");
             }
 
-            // 2. Kalkulasi Biaya
+            // 3. Kalkulasi Diskon Kupon
             $finalPrice = $course->price;
-            if ($data->couponCode === 'HEMAT20') {
-                $finalPrice = (int) ($course->price * 0.8);
+            if ($data->couponCode === 'HEMAT50') {
+                $finalPrice = (int) ($course->price * 0.5);
             }
 
-            // 3. Eksekusi Pembayaran via Gateway
+            // 4. Pembayaran via Payment Gateway
             $paymentRef = $this->paymentGateway->charge($finalPrice, $data->paymentMethod);
 
-            // 4. Simpan Pendaftaran
+            // 5. Simpan Transaksi Pendaftaran
             return Enrollment::create([
-                'user_id'            => $data->userId,
-                'course_id'          => $data->courseId,
-                'amount_paid'        => $finalPrice,
-                'payment_reference'  => $paymentRef,
-                'status'             => 'active',
+                'user_id'           => $data->userId,
+                'course_id'         => $data->courseId,
+                'amount_paid'       => $finalPrice,
+                'payment_reference' => $paymentRef,
+                'status'            => 'active',
             ]);
         });
     }
@@ -316,13 +374,8 @@ class CourseEnrollmentService
 
 ---
 
-#### Langkah 4: Membuat Skinny Controller
-Buat controller invokable:
-```bash
-php artisan make:controller EnrollCourseController --invokable
-```
-
-Buka `app/Http/Controllers/EnrollCourseController.php`:
+#### Langkah 5: Membuat Skinny Controller Bersih (Tanpa `try-catch`)
+Buat controller invokable `app/Http/Controllers/EnrollCourseController.php`:
 ```php
 namespace App\Http\Controllers;
 
@@ -339,7 +392,6 @@ class EnrollCourseController extends Controller
 
     public function __invoke(EnrollCourseRequest $request): JsonResponse
     {
-        // 1. Transformasi Form Request ke DTO
         $dto = new EnrollmentData(
             userId: (int) auth()->id(),
             courseId: (int) $request->validated('course_id'),
@@ -347,27 +399,18 @@ class EnrollCourseController extends Controller
             couponCode: $request->validated('coupon_code')
         );
 
-        try {
-            // 2. Delegasikan ke Service Layer
-            $enrollment = $this->enrollmentService->enroll($dto);
+        // Panggil Service secara langsung! Exception otomatis di-render oleh Laravel
+        $enrollment = $this->enrollmentService->enroll($dto);
 
-            // 3. Kembalikan Response HTTP
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Pendaftaran kursus berhasil diproses.',
-                'data'    => $enrollment,
-            ], 201);
-
-        } catch (\DomainException $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 422);
-        }
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Pendaftaran kursus berhasil diproses.',
+            'data'    => $enrollment,
+        ], 201);
     }
 }
 ```
-*Amati bahwa Controller ini sangat ramping, bersih, dan hanya berfokus pada protokol HTTP!*
+*Hasil:* Controller ini hanya **12 baris kode**, bebas `try-catch` kotor, sangat mudah dibaca, dan 100% patuh pada prinsip *Single Responsibility*.
 
 ---
 
