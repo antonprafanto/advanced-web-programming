@@ -5,7 +5,7 @@
 ---
 
 ### I. PANDUAN PENILAIAN UMUM
-- Dokumen ini adalah acuan resmi bagi Dosen dan Asisten Dosen (Asdos) dalam memeriksa submission [TUGAS-01.md](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md).
+- Dokumen ini adalah acuan resmi bagi Dosen dan Asisten Dosen (Asdos) dalam memeriksa submission [TUGAS-01.md](TUGAS-01.md).
 - Total Nilai Maksimal: **100 Poin**.
 - Mahasiswa wajib menyertakan link repositori GitHub aktif dengan struktur commit rapi.
 

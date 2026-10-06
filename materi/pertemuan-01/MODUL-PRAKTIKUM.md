@@ -291,4 +291,4 @@ Di dalam folder project `praktikum-01-weblanjut`:
 ---
 
 ### VII. LEMBAR TUGAS MANDIRI
-Kerjakan soal penugasan terstruktur yang tercantum pada [TUGAS-01.md](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md).
+Kerjakan soal penugasan terstruktur yang tercantum pada [TUGAS-01.md](TUGAS-01.md).
