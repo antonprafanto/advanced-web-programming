@@ -138,4 +138,40 @@ class SecureMediaController extends Controller
             ]
         );
     }
+
+    /**
+     * PRAKTIK BAIK 4: Upload Sertifikat/Media dengan Watermarking Dinamis & Konversi WebP
+     */
+    public function uploadMediaWithWatermark(Request $request)
+    {
+        $request->validate([
+            'image' => ['required', File::image()->max(5 * 1024)],
+            'watermark_text' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $file = $request->file('image');
+        $watermark = $request->input('watermark_text', 'ACADEMIC VERIFIED');
+
+        // 1. Baca gambar dan resize proporsional
+        $img = Image::read($file)->scaleDown(width: 1200);
+
+        // 2. Tempelkan watermark teks transparan di sudut kanan bawah
+        $img->text($watermark, $img->width() - 30, $img->height() - 30, function ($font) {
+            $font->size(24);
+            $font->color('rgba(255, 255, 255, 0.6)');
+            $font->align('right');
+            $font->valign('bottom');
+        });
+
+        // 3. Konversi ke WebP (membersihkan EXIF metadata tersembunyi)
+        $encodedWebp = $img->toWebp(quality: 85);
+
+        $filename = 'certificates/' . Str::uuid() . '.webp';
+        Storage::disk('public')->put($filename, (string) $encodedWebp);
+
+        return response()->json([
+            'message' => 'Berkas media berhasil di-watermark dan dikonversi ke format WebP.',
+            'media_url' => Storage::disk('public')->url($filename),
+        ]);
+    }
 }

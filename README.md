@@ -97,7 +97,7 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
-### Pertemuan 07: File Management, Media Handling & Cloud Storage Abstraction
+### Pertemuan 07: File Management, Media Handling, & Review Milestone Proyek
 *Folder Materi:* [materi/pertemuan-07/](materi/pertemuan-07/README.md)
 - 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-07/MODUL-PRAKTIKUM.md)
 - ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-07/LESSON-PLAN-RPP.md)
@@ -105,7 +105,7 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 - 📝 [Lembar Tugas Mandiri 07](materi/pertemuan-07/TUGAS-07.md)
 - 📂 Studi Kasus:
   - [01-insecure-direct-upload.php (Insecure Direct Upload Anti-Pattern)](materi/pertemuan-07/studi-kasus/01-insecure-direct-upload.php)
-  - [02-secure-multi-disk-storage.php (Secure Multi-Disk Storage & Signed URLs)](materi/pertemuan-07/studi-kasus/02-secure-multi-disk-storage.php)
+  - [02-secure-multi-disk-storage.php (Secure Multi-Disk Storage, Signed URLs & Watermark)](materi/pertemuan-07/studi-kasus/02-secure-multi-disk-storage.php)
 
 ---
 

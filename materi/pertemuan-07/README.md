@@ -1,7 +1,7 @@
-# Pertemuan 07: File Management, Media Handling & Cloud Storage Abstraction
+# Pertemuan 07: File Management, Media Handling, & Review Milestone Proyek
 
 ## 🎯 Capaian Pembelajaran (Sub-CPMK)
-Mahasiswa mampu mengelola asset media secara aman pada arsitektur multi-disk (*local private*, *public*, dan *cloud object storage* seperti S3/Supabase), menerapkan validasi keamanan berkas untuk mencegah kerentanan *Remote Code Execution* (RCE), mengimplementasikan *Temporary Signed URLs* untuk berkas privat, serta melakukan optimasi gambar secara dinamis.
+Mahasiswa mampu mengelola asset media secara aman pada arsitektur multi-disk (*local private*, *public*, dan *cloud object storage* seperti S3/Supabase), menerapkan validasi keamanan berkas untuk mencegah kerentanan malware (*Remote Code Execution* dan *SVG XSS*), mengimplementasikan *Temporary Signed URLs* untuk berkas privat, melakukan optimasi gambar (*resize*, *watermarking*, *WebP conversion*), serta memvalidasi kesiapan arsitektur proyek menjelang Ujian Tengah Semester (UTS Milestone 1).
 
 ---
 
@@ -9,7 +9,7 @@ Mahasiswa mampu mengelola asset media secara aman pada arsitektur multi-disk (*l
 
 | Dokumen / Berkas | Sasaran Pengguna | Deskripsi Ringkas |
 | :--- | :---: | :--- |
-| 📘 [MODUL-PRAKTIKUM.md](MODUL-PRAKTIKUM.md) | Mahasiswa & Dosen | Panduan lab komprehensif: arsitektur Flysystem, disk lokal vs publik vs S3, pengamanan unggah berkas, signed URL, dan konversi WebP. |
+| 📘 [MODUL-PRAKTIKUM.md](MODUL-PRAKTIKUM.md) | Mahasiswa & Dosen | Panduan lab komprehensif: arsitektur Flysystem, disk lokal vs publik vs S3, pengamanan unggah berkas & malware prevention, signed URL, watermarking, konversi WebP, dan checklist kesiapan UTS Milestone 1. |
 | ⏱️ [LESSON-PLAN-RPP.md](LESSON-PLAN-RPP.md) | Dosen & Asisten | Skenario pembelajaran tatap muka 150 menit (Apersepsi bahaya RCE, live code storage abstraction, lab hands-on, asistensi UTS). |
 | 📝 [TUGAS-07.md](TUGAS-07.md) | Mahasiswa | Lembar instruksi tugas praktikum: modul berkas rahasia (KTP/Ijazah) dengan proteksi signed URL dan avatar WebP. |
 | ⚖️ [RUBRIK-PENILAIAN-ASDOS.md](RUBRIK-PENILAIAN-ASDOS.md) | Dosen & Asdos | Standar grading 100 poin, indikator penilaian, matriks penalti, serta kunci jawaban implementasi referensi. |

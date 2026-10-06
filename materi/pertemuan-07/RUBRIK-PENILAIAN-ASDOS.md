@@ -38,7 +38,7 @@
 
 | Kriteria Penilaian | Poin Maks. | Indikator Penilaian |
 | :--- | :---: | :--- |
-| **Auto Crop Persegi & Konversi WebP** | 15 Poin | Memotong foto menjadi persegi (400x400 px) dan mengonversi format menjadi `.webp` dengan kompresi kualitas 80%. |
+| **Auto Crop Persegi, Watermark & Konversi WebP** | 15 Poin | Memotong foto menjadi persegi (400x400 px), membubuhkan watermark teks/logo transparan, dan mengonversi format menjadi `.webp` dengan kompresi kualitas 80% (membersihkan metadata EXIF). |
 | **Garbage Collection (Hapus Avatar Lama)** | 10 Poin | Menghapus berkas avatar fisik lama di disk publik sebelum menyimpan avatar baru agar disk server tidak penuh dengan berkas usang (*zombie files*). |
 
 ---
@@ -200,9 +200,18 @@ class AvatarService
             Storage::disk('public')->delete($user->avatar_path);
         }
 
-        // 2. Crop 400x400 dan konversi ke WebP
+        // 2. Crop 400x400, bubuhkan watermark, dan konversi ke WebP
         $image = Image::read($file);
         $image->cover(400, 400);
+
+        // Tempelkan watermark teks semi-transparan di sudut kanan bawah
+        $image->text('VERIFIED', 380, 380, function ($font) {
+            $font->size(18);
+            $font->color('rgba(255, 255, 255, 0.6)');
+            $font->align('right');
+            $font->valign('bottom');
+        });
+
         $encodedWebp = $image->toWebp(quality: 80);
 
         // 3. Simpan dengan ekstensi .webp di storage/app/public/avatars/

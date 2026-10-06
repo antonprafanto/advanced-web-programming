@@ -36,13 +36,14 @@ Anda diminta membangun modul pengunggahan berkas verifikasi identitas mahasiswa 
 
 ---
 
-#### Bagian C: Avatar Optimization & Konversi Format WebP (Bobot 25%)
-1. Buat fitur unggah foto profil (avatar) yang disimpan di **disk publik** (`public`).
-2. Gunakan library manipulasi gambar (seperti `intervention/image-laravel` atau fungsi native GD/Imagick):
-   - Gambar dipotong otomatis menjadi rasio persegi (*crop cover* 400x400 px).
-   - Seluruh format gambar yang masuk (PNG/JPEG) otomatis dikonversi menjadi format **WebP** dengan kualitas 80%.
+#### Bagian C: Media Processing: Watermarking & Konversi WebP (Bobot 25%)
+1. Buat fitur unggah foto profil (avatar) atau media publik yang disimpan di **disk publik** (`public`).
+2. Gunakan library manipulasi gambar modern (`intervention/image-laravel`):
+   - Gambar dipotong otomatis (*crop cover* 400x400 px) atau di-resize proporsional.
+   - Bubuhkan **Watermark** (teks semi-transparan misal `VERIFIED` atau logo) di sudut gambar.
+   - Format gambar otomatis dikonversi menjadi **WebP** dengan kualitas 80% (sekaligus membuang metadata EXIF tersembunyi).
 3. Simpan berkas dengan ekstensi `.webp`.
-4. Jika mahasiswa mengunggah avatar baru, berkas avatar lama yang ada di disk publik harus **otomatis terhapus** (*clean storage garbage collection*).
+4. Jika user mengunggah berkas baru, berkas lama yang ada di disk publik harus **otomatis terhapus** (*clean storage garbage collection*).
 
 ---
 
