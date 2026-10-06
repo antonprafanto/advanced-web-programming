@@ -84,6 +84,18 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
+### Pertemuan 06: Advanced Authentication, Authorization Policies & RBAC (Spatie)
+*Folder Materi:* [materi/pertemuan-06/](materi/pertemuan-06/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-06/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-06/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](materi/pertemuan-06/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 06](materi/pertemuan-06/TUGAS-06.md)
+- 📂 Studi Kasus:
+  - [01-naive-if-role-checks.php (Anti-Pattern Naive If Role Checks)](materi/pertemuan-06/studi-kasus/01-naive-if-role-checks.php)
+  - [02-policy-and-spatie-rbac.php (Enterprise RBAC & Model Policies)](materi/pertemuan-06/studi-kasus/02-policy-and-spatie-rbac.php)
+
+---
+
 ## 🛠️ Tech Stack & Ekosistem
 - **Backend Framework**: PHP 8.2+ / Laravel 11.x/12.x
 - **Database & Cache**: PostgreSQL / MySQL, Redis
