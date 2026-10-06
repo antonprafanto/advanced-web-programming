@@ -48,6 +48,18 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
+### Pertemuan 03: Database Engineering: Schema Migration, Seeding & Model Factory
+*Folder Materi:* [materi/pertemuan-03/](materi/pertemuan-03/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-03/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-03/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](materi/pertemuan-03/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 03](materi/pertemuan-03/TUGAS-03.md)
+- 📂 Studi Kasus:
+  - [01-naive-seeder-slow.php (Naive Loop Seeder)](materi/pertemuan-03/studi-kasus/01-naive-seeder-slow.php)
+  - [02-optimized-factory-chunk.php (High-Speed Batch Seeder & ACID Transaction)](materi/pertemuan-03/studi-kasus/02-optimized-factory-chunk.php)
+
+---
+
 ## 🛠️ Tech Stack & Ekosistem
 - **Backend Framework**: PHP 8.2+ / Laravel 11.x/12.x
 - **Database & Cache**: PostgreSQL / MySQL, Redis
