@@ -112,7 +112,10 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 ### Pertemuan 08: Ujian Tengah Semester (UTS) — Midterm Project Defense (Milestone 1)
 *Folder Materi:* [materi/pertemuan-08/](materi/pertemuan-08/README.md)
 - 📋 [Panduan Pelaksanaan Evaluasi & Tata Tertib UTS](materi/pertemuan-08/PANDUAN-EVALUASI-UTS.md)
-- ⚖️ [Rubrik Penilaian Dosen Berbasis OBE (100 Poin) & Scoring Sheet](materi/pertemuan-08/RUBRIK-PENILAIAN-UTS.md)
+- ⏱️ [Skenario Pembelajaran & Alur Sidang Lab (RPP 150 Menit)](materi/pertemuan-08/LESSON-PLAN-RPP.md)
+- ⚖️ [Rubrik Penilaian Dosen Berbasis OBE (100 Poin)](materi/pertemuan-08/RUBRIK-PENILAIAN-UTS.md)
+- ❓ [Bank Pertanyaan Penguji & Live Modification Challenge](materi/pertemuan-08/BANK-SOAL-DAN-CHALLENGE-DEFENSE.md)
+- 📝 [Berita Acara Resmi & Lembar Rekap Skor Nilai Fisik](materi/pertemuan-08/BERITA-ACARA-DAN-FORMULIR-NILAI.md)
 - 📘 [Spesifikasi & Rubrik Proyek Milestone 1 UTS](KONTRAK-KULIAH-DAN-PANDUAN-PROYEK.md#iii-panduan-proyek-tengah-semester-uts--milestone-1)
 
 ---

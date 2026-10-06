@@ -10,7 +10,10 @@ Mahasiswa mampu mendemonstrasikan penguasaan arsitektur web modern skala industr
 | Dokumen / Berkas | Sasaran Pengguna | Deskripsi Ringkas |
 | :--- | :---: | :--- |
 | 📋 [PANDUAN-EVALUASI-UTS.md](PANDUAN-EVALUASI-UTS.md) | Mahasiswa & Dosen | Tata tertib ujian, alur presentasi *Live Code Defense* (15 menit per tim), verifikasi kontribusi Git, dan prosedur pengujian *live challenge*. |
-| ⚖️ [RUBRIK-PENILAIAN-UTS.md](RUBRIK-PENILAIAN-UTS.md) | Dosen Penguji | Matriks penilaian berbasis OBE (Total 100 Poin), formulir rekap nilai individu, matriks penalti plagiarisme, dan lembar berita acara ujian. |
+| ⏱️ [LESSON-PLAN-RPP.md](LESSON-PLAN-RPP.md) | Dosen & Asisten | Skenario waktu 150 menit tatap muka lab, tata kelola antrean tim, dan alur sidang code review. |
+| ⚖️ [RUBRIK-PENILAIAN-UTS.md](RUBRIK-PENILAIAN-UTS.md) | Dosen Penguji | Matriks penilaian berbasis OBE (Total 100 Poin), formulir rekap nilai individu, dan matriks penalti plagiarisme. |
+| ❓ [BANK-SOAL-DAN-CHALLENGE-DEFENSE.md](BANK-SOAL-DAN-CHALLENGE-DEFENSE.md) | Dosen & Asisten | Bank 10 pertanyaan teknis penguji dan 5 skenario tantangan modifikasi kode langsung di tempat (*live modification*). |
+| 📝 [BERITA-ACARA-DAN-FORMULIR-NILAI.md](BERITA-ACARA-DAN-FORMULIR-NILAI.md) | Dosen & Asisten | Berita acara resmi pelaksanaan evaluasi UTS dan formulir rekap nilai fisik berstandar program studi. |
 | 📘 [Kontrak Kuliah Bab III](../../KONTRAK-KULIAH-DAN-PANDUAN-PROYEK.md#iii-panduan-proyek-tengah-semester-uts--milestone-1) | Mahasiswa | Ketentuan umum proyek tengah semester dan arsitektur dasar Milestone 1. |
 
 ---
