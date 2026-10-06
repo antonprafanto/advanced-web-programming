@@ -72,6 +72,18 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
+### Pertemuan 05: Enterprise Architecture: Service Layer, DTO & Dependency Injection
+*Folder Materi:* [materi/pertemuan-05/](materi/pertemuan-05/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-05/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-05/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](materi/pertemuan-05/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 05](materi/pertemuan-05/TUGAS-05.md)
+- 📂 Studi Kasus:
+  - [01-monolithic-fat-controller.php (Monolithic Fat Controller Anti-Pattern)](materi/pertemuan-05/studi-kasus/01-monolithic-fat-controller.php)
+  - [02-layered-service-dto.php (Clean Architecture with DTO & Service Layer)](materi/pertemuan-05/studi-kasus/02-layered-service-dto.php)
+
+---
+
 ## 🛠️ Tech Stack & Ekosistem
 - **Backend Framework**: PHP 8.2+ / Laravel 11.x/12.x
 - **Database & Cache**: PostgreSQL / MySQL, Redis
