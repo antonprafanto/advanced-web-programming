@@ -1,11 +1,11 @@
 # Pemrograman Web Lanjut (Advanced Web Programming)
 ### Program Studi S1 Informatika / Teknik Informatika
 
-Repositori ini memuat perangkat perkuliahan lengkap untuk mata kuliah **Pemrograman Web Lanjut**: Rencana Pembelajaran Semester (RPS/Silabus), Kontrak Kuliah, Panduan Capstone Project (UTS & UAS), serta Modul Praktikum terstruktur per pertemuan.
+Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mata kuliah **Pemrograman Web Lanjut**: Rencana Pembelajaran Semester (RPS/Silabus), Kontrak Kuliah, Panduan Capstone Project (UTS & UAS), serta Modul Pembelajaran per pertemuan.
 
 ---
 
-## 📌 Dokumen Utama Perkuliahan
+## 📌 Dokumen Pokok Perkuliahan
 - 📄 [Rencana Pembelajaran Semester (RPS / Silabus 16 Minggu)](file:///c:/Users/anton/vibecoding/weblanjut/silabus-pemrograman-web-lanjut.md)
 - 📋 [Kontrak Perkuliahan & Panduan Capstone Project (UTS & UAS)](file:///c:/Users/anton/vibecoding/weblanjut/KONTRAK-KULIAH-DAN-PANDUAN-PROYEK.md)
 - 📚 [Direktori Materi & Modul Praktikum (Pertemuan 1 - 16)](file:///c:/Users/anton/vibecoding/weblanjut/materi/README.md)
@@ -22,11 +22,17 @@ Repositori ini memuat perangkat perkuliahan lengkap untuk mata kuliah **Pemrogra
 
 ---
 
-## 🚀 Modul Praktikum Terbaru
-- **Pertemuan 01**: [Transisi dari Native PHP ke Modern PHP 8.x & Request Lifecycle Laravel](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/MODUL-PRAKTIKUM.md)
-  - 📂 [Studi Kasus 01: Legacy Spaghetti Code](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/01-native-legacy.php)
-  - 📂 [Studi Kasus 02: Refactored Modern PHP 8.x Code](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php)
-  - 📝 [Lembar Tugas Mandiri 01](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md)
+## 🚀 Perangkat Pembelajaran yang Tersedia
+
+### Pertemuan 01: Transisi Native PHP ke Modern PHP 8.x & Request Lifecycle Laravel
+*Folder Materi:* [materi/pertemuan-01/](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 01](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/TUGAS-01.md)
+- 📂 Studi Kasus:
+  - [01-native-legacy.php (Legacy Spaghetti Code)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/01-native-legacy.php)
+  - [02-modern-php8-refactored.php (Refactored Modern PHP 8.x Code)](file:///c:/Users/anton/vibecoding/weblanjut/materi/pertemuan-01/studi-kasus/02-modern-php8-refactored.php)
 
 ---
 
