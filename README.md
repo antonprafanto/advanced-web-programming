@@ -36,6 +36,18 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 
 ---
 
+### Pertemuan 02: Advanced Routing, Controllers Pattern & Form Request Validation
+*Folder Materi:* [materi/pertemuan-02/](materi/pertemuan-02/README.md)
+- 📘 [Modul Praktikum & Panduan Lab Mahasiswa](materi/pertemuan-02/MODUL-PRAKTIKUM.md)
+- ⏱️ [Skenario Pembelajaran (RPP 150 Menit Dosen & Asdos)](materi/pertemuan-02/LESSON-PLAN-RPP.md)
+- ⚖️ [Pedoman Penilaian & Rubrik Solusi Asdos](materi/pertemuan-02/RUBRIK-PENILAIAN-ASDOS.md)
+- 📝 [Lembar Tugas Mandiri 02](materi/pertemuan-02/TUGAS-02.md)
+- 📂 Studi Kasus:
+  - [01-fat-controller-bad.php (Anti-Pattern Fat Controller)](materi/pertemuan-02/studi-kasus/01-fat-controller-bad.php)
+  - [02-clean-controller-formrequest.php (Clean Skinny Controller & Form Request)](materi/pertemuan-02/studi-kasus/02-clean-controller-formrequest.php)
+
+---
+
 ## 🛠️ Tech Stack & Ekosistem
 - **Backend Framework**: PHP 8.2+ / Laravel 11.x/12.x
 - **Database & Cache**: PostgreSQL / MySQL, Redis

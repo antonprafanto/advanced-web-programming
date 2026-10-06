@@ -6,7 +6,7 @@ Tabel berikut memuat daftar seluruh modul perkuliahan, panduan lab, skenario aja
 | Pertemuan | Topik / Modul | Status | Perangkat Pembelajaran Tersedia |
 | :---: | :--- | :---: | :--- |
 | **01** | **Transisi Native PHP ke Modern PHP 8.x, PSR-4, & Request Lifecycle Laravel** | 🟢 Lengkap | • [Modul Praktikum Mahasiswa](pertemuan-01/MODUL-PRAKTIKUM.md)<br>• [Skenario Pembelajaran (RPP)](pertemuan-01/LESSON-PLAN-RPP.md)<br>• [Rubrik Penilaian Asdos & Solusi](pertemuan-01/RUBRIK-PENILAIAN-ASDOS.md)<br>• [Lembar Tugas 01](pertemuan-01/TUGAS-01.md)<br>• [Studi Kasus 01 (Legacy)](pertemuan-01/studi-kasus/01-native-legacy.php)<br>• [Studi Kasus 02 (Modern Refactored)](pertemuan-01/studi-kasus/02-modern-php8-refactored.php) |
-| **02** | Advanced Routing, Controllers Pattern & Form Request Validation | 🟡 Segera Hadir | `pertemuan-02/` |
+| **02** | **Advanced Routing, Controllers Pattern & Form Request Validation** | 🟢 Lengkap | • [Modul Praktikum Mahasiswa](pertemuan-02/MODUL-PRAKTIKUM.md)<br>• [Skenario Pembelajaran (RPP)](pertemuan-02/LESSON-PLAN-RPP.md)<br>• [Rubrik Penilaian Asdos & Solusi](pertemuan-02/RUBRIK-PENILAIAN-ASDOS.md)<br>• [Lembar Tugas 02](pertemuan-02/TUGAS-02.md)<br>• [Studi Kasus 01 (Fat Controller)](pertemuan-02/studi-kasus/01-fat-controller-bad.php)<br>• [Studi Kasus 02 (Clean FormRequest)](pertemuan-02/studi-kasus/02-clean-controller-formrequest.php) |
 | **03** | Database Engineering: Schema Migration, Seeding & Model Factory | 🟡 Segera Hadir | `pertemuan-03/` |
 | **04** | Deep Dive Eloquent ORM: Complex Relationships & N+1 Optimization | 🟡 Segera Hadir | `pertemuan-04/` |
 | **05** | Enterprise Architecture: Service Layer, DTO & Dependency Injection | 🟡 Segera Hadir | `pertemuan-05/` |
