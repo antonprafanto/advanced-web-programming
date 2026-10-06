@@ -28,10 +28,11 @@
 #### Sesi 2: Pemaparan Teori Interaktif (Menit 15 – 55)
 - **Aktivitas Dosen:**
   - Membuka panduan materi di [MODUL-PRAKTIKUM.md](MODUL-PRAKTIKUM.md).
+  - Mengulas arsitektur starter kit modern **Laravel Breeze** (struktur controller di `app/Http/Controllers/Auth/` dan pencegahan brute-force via login rate limiting).
   - Membedakan konsep mendasar **Authentication** (siapa Anda) vs **Authorization** (apa yang boleh dilakukan).
   - Menjelaskan perbedaan **Gates** (aksi global seperti akses dashboard) vs **Policies** (otorisasi berbasis kepemilikan model).
-  - Menjelaskan kelemahan kolom enum `role` di database dan memperkenalkan arsitektur tabel ternormalisasi **`spatie/laravel-permission`**.
-  - Mengulas fitur keamanan akun: **Email Verification** dan **Password Confirmation**.
+  - Mengupas tuntas komparasi **RBAC Manual** (tabel pivot `role_user` pada [03-manual-rbac-implementation.php](studi-kasus/03-manual-rbac-implementation.php)) vs package industri **`spatie/laravel-permission`** (model relasi ternormalisasi & memori caching).
+  - Mengulas fitur keamanan akun modern: **Email Verification** (`MustVerifyEmail`), **Password Reset Flow** (siklus hashing token di `password_reset_tokens`), **Password Confirmation** (`password.confirm`), serta konsep algoritma **Two-Factor Authentication (2FA / TOTP RFC 6238)**.
 
 #### Sesi 3: Live Coding Demonstrasi oleh Dosen (Menit 65 – 95)
 - **Aktivitas Dosen:**

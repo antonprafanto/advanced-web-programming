@@ -93,6 +93,7 @@ Repositori ini memuat seluruh perangkat perkuliahan dan sumber belajar untuk mat
 - 📂 Studi Kasus:
   - [01-naive-if-role-checks.php (Anti-Pattern Naive If Role Checks)](materi/pertemuan-06/studi-kasus/01-naive-if-role-checks.php)
   - [02-policy-and-spatie-rbac.php (Enterprise RBAC & Model Policies)](materi/pertemuan-06/studi-kasus/02-policy-and-spatie-rbac.php)
+  - [03-manual-rbac-implementation.php (Manual Pivot Table RBAC)](materi/pertemuan-06/studi-kasus/03-manual-rbac-implementation.php)
 
 ---
 

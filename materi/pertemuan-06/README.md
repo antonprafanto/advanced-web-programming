@@ -13,7 +13,7 @@ Mahasiswa mampu membedakan secara komprehensif antara Autentikasi (AuthN) dan Ot
 | ⏱️ [LESSON-PLAN-RPP.md](LESSON-PLAN-RPP.md) | Dosen & Asisten | Skenario pembelajaran tatap muka 150 menit (Apersepsi celah otorisasi, live code Spatie RBAC & Policies, lab hands-on tinker, evaluasi). |
 | 📝 [TUGAS-06.md](TUGAS-06.md) | Mahasiswa | Lembar instruksi tugas praktikum: pembangunan modul LMS multi-role kampus (Super Admin, Dosen, Mahasiswa) dengan kepemilikan data dan email verification. |
 | ⚖️ [RUBRIK-PENILAIAN-ASDOS.md](RUBRIK-PENILAIAN-ASDOS.md) | Dosen & Asdos | Standar grading 100 poin, indikator penilaian, matriks sanksi penalti, serta kunci jawaban referensi lengkap. |
-| 📂 [studi-kasus/](studi-kasus/README.md) | Mahasiswa | Perbandingan kode *naive hardcoded if-role checks* vs *enterprise Model Policy & Spatie RBAC*. |
+| 📂 [studi-kasus/](studi-kasus/README.md) | Mahasiswa | Komparasi 3 arsitektur:<br>• [01-naive-if-role-checks.php](studi-kasus/01-naive-if-role-checks.php) (Hardcoded If-Role)<br>• [02-policy-and-spatie-rbac.php](studi-kasus/02-policy-and-spatie-rbac.php) (Enterprise Spatie & Policy)<br>• [03-manual-rbac-implementation.php](studi-kasus/03-manual-rbac-implementation.php) (Manual Pivot RBAC) |
 
 ---
 

@@ -1,254 +1,141 @@
 # MODUL PRAKTIKUM 06
 ## Topik: Advanced Authentication, Authorization Policies & RBAC (Spatie)
+### Mata Kuliah: Pemrograman Web Lanjut (3 SKS)
 
 ---
 
-### I. TUJUAN PEMBELAJARAN
+## DAFTAR ISI
+1. [Tujuan Pembelajaran](#1-tujuan-pembelajaran)
+2. [Modern Authentication Starter Kits: Laravel Breeze](#2-modern-authentication-starter-kits-laravel-breeze)
+3. [Authentication (AuthN) vs Authorization (AuthZ)](#3-authentication-authn-vs-authorization-authz)
+4. [Native Authorization: Gates vs Model Policies](#4-native-authorization-gates-vs-model-policies)
+5. [Role-Based Access Control: Implementasi Manual vs Spatie Package](#5-role-based-access-control-implementasi-manual-vs-spatie-package)
+6. [Fitur Pengamanan Akun Lanjutan](#6-fitur-pengamanan-akun-lanjutan)
+   - [A. Email Verification (MustVerifyEmail)](#a-email-verification-mustverifyemail)
+   - [B. Password Reset Flow & Token Expiration](#b-password-reset-flow--token-expiration)
+   - [C. Password Confirmation (password.confirm)](#c-password-confirmation-passwordconfirm)
+   - [D. Konsep Two-Factor Authentication (2FA / TOTP)](#d-konsep-two-factor-authentication-2fa--totp)
+7. [Langkah Praktikum Laboratorium](#7-langkah-praktikum-laboratorium)
+8. [Lembar Tugas Mandiri](#8-lembar-tugas-mandiri)
+
+---
+
+## 1. TUJUAN PEMBELAJARAN
 Setelah menyelesaikan praktikum ini, mahasiswa diharapkan mampu:
-1. Membedakan secara fundamental antara **Authentication (AuthN)** dan **Authorization (AuthZ)** pada arsitektur web modern.
-2. Membangun sistem otorisasi native Laravel menggunakan **Gates** (aksi global) dan **Policies** (otorisasi terikat model).
-3. Menerapkan mekanisme **Super Admin Bypass** menggunakan hook `Gate::before()`.
-4. Mengimplementasikan **Role-Based Access Control (RBAC)** skala industri menggunakan package `spatie/laravel-permission` (User $\leftrightarrow$ Role $\leftrightarrow$ Permission).
-5. Mengaktifkan fitur pengamanan akun tingkat lanjut: **Email Verification (`MustVerifyEmail`)**, **Password Confirmation (`password.confirm`)**, dan konsep **Two-Factor Authentication (2FA)**.
+1. Memahami arsitektur *authentication scaffolding* modern menggunakan **Laravel Breeze**.
+2. Membedakan secara fundamental antara **Authentication (AuthN)** dan **Authorization (AuthZ)**.
+3. Membangun sistem otorisasi native Laravel menggunakan **Gates** (aksi global) dan **Policies** (otorisasi terikat model).
+4. Menerapkan mekanisme **Super Admin Bypass** menggunakan hook `Gate::before()`.
+5. Membandingkan implementasi **RBAC Manual** (tabel pivot `role_user`) dengan package industri **`spatie/laravel-permission`**.
+6. Mengimplementasikan RBAC Spatie lengkap dengan *seeder*, *roles*, *permissions*, dan penanganan *cache*.
+7. Mengaktifkan fitur pengamanan akun: **Email Verification**, **Password Reset Flow**, **Password Confirmation**, serta memahami algoritma **Two-Factor Authentication (2FA/TOTP)**.
 
 ---
 
-### II. TEORI & KONSEP KUNCI
+## 2. MODERN AUTHENTICATION STARTER KITS: LARAVEL BREEZE
 
-#### 1. Authentication (AuthN) vs Authorization (AuthZ)
+Pada era native PHP atau Laravel versi awal, developer sering membuat form login dan controller registrasi secara manual. Praktik ini rawan melewatkan celah keamanan standar seperti *session fixation*, ketiadaan *rate limiting* (brute-force attack), penanganan *CSRF token*, dan algoritma hashing yang lemah.
+
+Laravel menyediakan starter kit resmi **Laravel Breeze** yang menyajikan implementasi autentikasi minimalis, aman, dan elegan.
+
+### A. Mengapa Memilih Laravel Breeze?
+- **Minimalis & Transparan:** Seluruh controller, rute, dan tampilan dipublikasikan langsung ke dalam direktori aplikasi Anda (`app/Http/Controllers/Auth/`), sehingga Anda memiliki kendali 100% untuk memodifikasi kodenya.
+- **Fleksibilitas Frontend:** Mendukung Blade + Tailwind CSS, Vue (Inertia.js), React (Inertia.js), hingga API-only mode (Next.js/Nuxt).
+- **Perbandingan Ekosistem Starter Kit Laravel:**
+
+| Fitur / Starter Kit | Laravel Breeze | Laravel Jetstream / Fortify | Custom Auth Manual |
+| :--- | :--- | :--- | :--- |
+| **Kompleksitas** | Ringan & Mudah Dipelajari | Tinggi (Fitur tim, API token Sanctum) | Berisiko tinggi salah konfigurasi |
+| **Struktur Kode** | Controller standar di `app/Http/Controllers/Auth/` | Aksi logika tersembunyi di vendor Fortify | Tergantung kerapian developer |
+| **Two-Factor Auth** | Konseptual / Tambahan package | Built-in bawaan | Harus bangun dari nol |
+| **Rekomendasi Pembelajaran** | ⭐ **Sangat Direkomendasikan (Standar S1)** | Untuk aplikasi enterprise kompleks | ❌ Hindari di lingkungan produksi |
+
+### B. Perintah Instalasi Breeze:
+```bash
+composer require laravel/breeze --dev
+php artisan breeze:install blade
+php artisan migrate
+npm install && npm run build
+```
+
+### C. Anatomi Controller yang Dihasilkan di `app/Http/Controllers/Auth/`:
+1. `AuthenticatedSessionController.php`: Menangani form login, autentikasi kredensial via `LoginRequest` (dilengkapi proteksi *rate limiting / throttling* 5 percobaan gagal per menit), dan regenerasi session ID saat logout.
+2. `RegisteredUserController.php`: Menangani pendaftaran user baru, validasi password kuat (`Password::defaults()`), hashing password via Bcrypt/Argon2id, dan memicu event `Registered` (untuk mengirim email verifikasi).
+3. `PasswordResetLinkController.php` & `NewPasswordController.php`: Menangani siklus lupa kata sandi.
+4. `VerifyEmailController.php` & `EmailVerificationNotificationController.php`: Menangani verifikasi tautan email.
+5. `ConfirmablePasswordController.php`: Memvalidasi ulang kata sandi sebelum aksi sensitif.
+
+---
+
+## 3. AUTHENTICATION (AuthN) VS AUTHORIZATION (AuthZ)
+
+```
+                            [ REQUEST MASUK ]
+                                    │
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │        AUTHENTICATION (AuthN)         │
+                │     "Siapa Anda sebenarnya?"          │
+                │  (Email, Password, Token, Session)    │
+                └───────────────────┬───────────────────┘
+                                    │
+                                    ├── [Gagal] ──> 401 Unauthorized / Redirect Login
+                                    ▼ [Sukses: User Dikenali]
+                ┌───────────────────────────────────────┐
+                │         AUTHORIZATION (AuthZ)         │
+                │    "Apa yang boleh Anda lakukan?"     │
+                │      (Roles, Permissions, Policy)     │
+                └───────────────────┬───────────────────┘
+                                    │
+                                    ├── [Ditolak] ──> 403 Forbidden
+                                    ▼ [Diizinkan]
+                            [ EKSEKUSI CONTROLLER ]
+```
 
 | Aspek | Authentication (AuthN) | Authorization (AuthZ) |
 | :--- | :--- | :--- |
-| **Pertanyaan Inti** | *"Siapa Anda?"* (Verifikasi Identitas) | *"Apa yang boleh Anda lakukan?"* (Hak Akses) |
-| **Mekanisme** | Email + Password, 2FA, OAuth, Token JWT | Roles, Permissions, Policies, Gates |
-| **Contoh Kasus** | Pengguna berhasil login ke sistem | Dosen A hanya boleh mengedit kursus miliknya sendiri |
-
-Starter kit modern seperti **Laravel Breeze** menyediakan fondasi autentikasi yang aman secara default: perlindungan *session fixation*, *login rate limiting / throttling* (mencegah brute-force), dan hashing password menggunakan algoritma **Bcrypt** atau **Argon2id**.
+| **Fokus Pertanyaan** | *"Siapa Anda?"* | *"Apakah Anda berhak melakukan aksi ini?"* |
+| **Entitas Utama** | `User`, Password Hash, Session, API Token | `Role`, `Permission`, `Policy`, `Gate` |
+| **HTTP Status Code** | **401 Unauthorized** (Belum login / token tidak valid) | **403 Forbidden** (Sudah login, tapi hak akses ditolak) |
+| **Contoh Kasus** | Mahasiswa berhasil masuk dengan email & password | Mahasiswa ditolak saat mencoba mengedit nilai ujian mahasiswa lain |
 
 ---
 
-#### 2. Native Authorization: Kapan Menggunakan Gate vs Policy?
+## 4. NATIVE AUTHORIZATION: GATES VS MODEL POLICIES
 
-##### A. Gates (Aksi Global Non-Model)
-Gates sangat cocok untuk otorisasi aksi yang tidak terikat pada satu model database tertentu (misal: hak mengakses panel dashboard admin atau fitur backup server).
+Laravel menyediakan dua mekanisme otorisasi bawaan:
 
-Didaftarkan di `app/Providers/AppServiceProvider.php`:
+### A. Gates (Otorisasi Aksi Global Non-Model)
+Gates berbentuk closure/callback yang didaftarkan di `AppServiceProvider::boot()`. Gates ideal untuk otorisasi yang tidak terikat pada satu objek model basis data tertentu.
+
 ```php
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
 
 public function boot(): void
 {
-    // Gate Global: Akses Dashboard Administrator
+    // Gate Global: Akses Dashboard Administrator Kampus
     Gate::define('access-admin-panel', function (User $user) {
         return $user->hasRole('admin');
     });
 
-    // Super Admin Bypass: Admin selalu lolos semua pengecekan Gate & Policy
+    // Super Admin Bypass Pattern:
+    // Seluruh Gate & Policy otomatis lolos jika user memiliki role 'super-admin'
     Gate::before(function (User $user, string $ability) {
-        if ($user->hasRole('super-admin')) {
-            return true; // Bypass otomatis
-        }
+        return $user->hasRole('super-admin') ? true : null;
     });
 }
 ```
 
-##### B. Policies (Otorisasi Terikat Model)
-Policies mengorganisir logika otorisasi untuk model Eloquent tertentu (seperti `Course`, `Article`, `Order`):
+### B. Policies (Otorisasi Berbasis Kepemilikan Model)
+Policies adalah kelas PHP yang mengelompokkan aturan otorisasi untuk model Eloquent tertentu (misal: `Course`, `Article`, `StudentGrade`).
+
+Buat policy dengan perintah artisan:
 ```bash
 php artisan make:policy CoursePolicy --model=Course
 ```
 
-Isi berkas `app/Policies/CoursePolicy.php`:
-```php
-namespace App\Policies;
-
-use App\Models\Course;
-use App\Models\User;
-
-class CoursePolicy
-{
-    // Siapa yang boleh melihat detail kursus?
-    public function view(User $user, Course $course): bool
-    {
-        // Kursus publik boleh dilihat siapa saja, kursus draft hanya pemiliknya
-        return $course->status === 'published' || $course->instructor_id === $user->id;
-    }
-
-    // Siapa yang boleh membuat kursus baru?
-    public function create(User $user): bool
-    {
-        return $user->can('create courses');
-    }
-
-    // Siapa yang boleh mengedit kursus ini?
-    public function update(User $user, Course $course): bool
-    {
-        // Hanya dosen pemilik kursus yang boleh mengedit
-        return $user->id === $course->instructor_id;
-    }
-
-    // Siapa yang boleh menghapus?
-    public function delete(User $user, Course $course): bool
-    {
-        return $user->id === $course->instructor_id && $course->enrollments()->doesntExist();
-    }
-}
-```
-
-##### C. Cara Memanggil Otorisasi di Berbagai Layer
-1. **Di Controller:**
-   ```php
-   public function edit(Course $course)
-   {
-       Gate::authorize('update', $course); // Otomatis melempar 403 Forbidden jika ditolak
-       return view('courses.edit', compact($course));
-   }
-   ```
-2. **Di Form Request:**
-   ```php
-   public function authorize(): bool
-   {
-       $course = $this->route('course');
-       return $this->user()->can('update', $course);
-   }
-   ```
-3. **Di Tampilan Blade:**
-   ```blade
-   @can('update', $course)
-       <a href="{{ route('courses.edit', $course) }}" class="btn btn-primary">Edit Kursus</a>
-   @endcan
-   ```
-
----
-
-#### 3. Role-Based Access Control (RBAC) via `spatie/laravel-permission`
-
-> [!WARNING]
-> **Mengapa Kolom `role` Enum di Tabel Users Tidak Cukup?**  
-> Pada aplikasi kampus/enterprise, seorang pengguna bisa memiliki multi-peran secara bersamaan (misal: Bapak Budi adalah **Dosen**, sekaligus **Kaprodi**, dan bertindak sebagai **Reviewer Jurnal**).  
-> Pendekatan kolom tunggal `users.role = 'dosen'` akan gagal mengakomodasi skenario ini!
-
-##### A. Arsitektur Relasi Spatie RBAC
-Package ini menerapkan skema ternormalisasi:
-- `roles` (Admin, Dosen, Mahasiswa)
-- `permissions` (create-course, publish-course, grade-assignment)
-- `model_has_roles` & `role_has_permissions`
-
-##### B. Instalasi & Setup
-```bash
-composer require spatie/laravel-permission
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
-php artisan migrate
-```
-
-Tambahkan trait `HasRoles` di `app/Models/User.php`:
-```php
-namespace App\Models;
-
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Spatie\Permission\Traits\HasRoles;
-
-class User extends Authenticatable
-{
-    use HasRoles; // Mengaktifkan fungsionalitas RBAC
-    // ...
-}
-```
-
-##### C. Seeding Peran & Izin di `DatabaseSeeder.php`
-```php
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-
-// 1. Buat Permissions
-$permCreate = Permission::create(['name' => 'create courses']);
-$permPublish = Permission::create(['name' => 'publish courses']);
-$permEnroll = Permission::create(['name' => 'enroll courses']);
-
-// 2. Buat Roles & Hubungkan Permission
-$dosenRole = Role::create(['name' => 'dosen']);
-$dosenRole->givePermissionTo([$permCreate, $permPublish]);
-
-$mhsRole = Role::create(['name' => 'mahasiswa']);
-$mhsRole->givePermissionTo($permEnroll);
-
-$adminRole = Role::create(['name' => 'super-admin']);
-// Super admin otomatis punya semua izin via Gate::before
-
-// 3. Assign Role ke Pengguna
-$dosenUser = User::factory()->create(['email' => 'dosen@kampus.ac.id']);
-$dosenUser->assignRole('dosen');
-```
-
-##### D. Proteksi Middleware di Laravel 11/12
-Daftarkan alias di `bootstrap/app.php`:
-```php
-->withMiddleware(function ($middleware) {
-    $middleware->alias([
-        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-    ]);
-})
-```
-
-Terapkan di rute:
-```php
-Route::middleware(['auth', 'role:dosen'])->group(function () {
-    Route::resource('courses', CourseController::class);
-});
-```
-
----
-
-#### 4. Fitur Pengamanan Akun Lanjutan
-
-##### A. Email Verification (`MustVerifyEmail`)
-Memastikan akun didaftarkan menggunakan alamat email asli milik pengguna:
-```php
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-
-class User extends Authenticatable implements MustVerifyEmail
-{
-    // ...
-}
-```
-Proteksi rute agar hanya bisa diakses user yang sudah klik link verifikasi email:
-```php
-Route::get('/transaksi', [TransactionController::class, 'index'])->middleware(['auth', 'verified']);
-```
-
-##### B. Password Confirmation (`password.confirm`)
-Mencegah penyusup yang mengakses laptop user yang lupa logout untuk mengubah data sensitif (misal: nomor rekening penarikan dana atau password):
-```php
-Route::get('/settlement/withdraw', [WithdrawController::class, 'create'])
-    ->middleware(['auth', 'password.confirm']);
-```
-Laravel otomatis menampilkan form meminta pengguna memasukkan ulang password sebelum mengizinkan aksi.
-
----
-
-### III. LANGKAH PRAKTIKUM LABORATORIUM
-
-#### Langkah 1: Instalasi Package & Setup Model
-Jalankan di terminal:
-```bash
-composer require spatie/laravel-permission
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
-php artisan migrate
-```
-Buka model `app/Models/User.php`, tambahkan `use HasRoles;`.
-
----
-
-#### Langkah 2: Membuat Policy untuk Model Course
-Jalankan artisan:
-```bash
-php artisan make:policy CoursePolicy --model=Course
-```
-
-Lengkapi logika pengecekan di `app/Policies/CoursePolicy.php`:
+Implementasi di `app/Policies/CoursePolicy.php`:
 ```php
 namespace App\Policies;
 
@@ -259,28 +146,26 @@ use Illuminate\Auth\Access\Response;
 class CoursePolicy
 {
     /**
-     * Tentukan apakah user boleh mengedit kursus.
+     * Dosen hanya boleh mengedit kursus miliknya sendiri.
      */
     public function update(User $user, Course $course): Response
     {
-        // Catatan: Kita TIDAK PERLU menulis "|| $user->hasRole('super-admin')" di sini!
-        // Super admin otomatis lolos lewat Gate::before() hook di AppServiceProvider.
         return $user->id === $course->instructor_id
             ? Response::allow()
-            : Response::deny('Akses ditolak: Anda bukan dosen pengampu kursus ini.');
+            : Response::deny('Akses Ditolak: Anda bukan dosen pengampu kursus ini.');
     }
 
     /**
-     * Tentukan apakah user boleh menghapus kursus.
+     * Dosen boleh menghapus kursus jika miliknya DAN belum ada mahasiswa terdaftar.
      */
     public function delete(User $user, Course $course): Response
     {
         if ($user->id !== $course->instructor_id) {
-            return Response::deny('Akses ditolak: Anda tidak memiliki izin menghapus kursus milik dosen lain.');
+            return Response::deny('Akses Ditolak: Anda tidak memiliki izin menghapus kursus milik dosen lain.');
         }
 
-        if ($course->enrollments()->count() > 0) {
-            return Response::deny('Kursus tidak dapat dihapus karena sudah memiliki mahasiswa aktif yang terdaftar.');
+        if ($course->enrollments()->exists()) {
+            return Response::deny('Kursus tidak dapat dihapus karena sudah memiliki mahasiswa terdaftar.');
         }
 
         return Response::allow();
@@ -288,10 +173,223 @@ class CoursePolicy
 }
 ```
 
+### C. Cara Memanggil Otorisasi di Berbagai Layer:
+1. **Di Controller:**
+   ```php
+   public function update(Request $request, Course $course)
+   {
+       Gate::authorize('update', $course); // Otomatis throw 403 Forbidden dengan pesan dari Policy jika gagal
+       $course->update($request->validated());
+   }
+   ```
+2. **Di Form Request:**
+   ```php
+   public function authorize(): bool
+   {
+       return $this->user()->can('update', $this->route('course'));
+   }
+   ```
+3. **Di Tampilan Blade:**
+   ```blade
+   @can('update', $course)
+       <a href="{{ route('courses.edit', $course) }}" class="btn btn-warning">Edit Kursus</a>
+   @endcan
+   ```
+
 ---
 
-#### Langkah 3: Konfigurasi Super Admin Bypass di `AppServiceProvider`
-Buka `app/Providers/AppServiceProvider.php`, daftarkan hook di method `boot()`:
+## 5. ROLE-BASED ACCESS CONTROL: IMPLEMENTASI MANUAL VS SPATIE PACKAGE
+
+### A. Pendekatan 1: RBAC Manual (Pivot Table `role_user`)
+Pada aplikasi skala kecil dengan 2-3 role statis, pengembang dapat membuat skema relasi manual:
+- Tabel `roles` (`id`, `name`)
+- Tabel pivot `role_user` (`user_id`, `role_id`)
+- Relasi di Model `User`:
+  ```php
+  public function roles(): BelongsToMany
+  {
+      return $this->belongsToMany(Role::class);
+  }
+
+  public function hasRole(string $roleName): bool
+  {
+      return $this->roles->contains('name', $roleName);
+  }
+  ```
+- Custom Middleware `EnsureUserHasRole`:
+  ```php
+  public function handle(Request $request, Closure $next, string $role): Response
+  {
+      if (! $request->user()?->hasRole($role)) {
+          abort(403, 'Akses ditolak untuk peran ini.');
+      }
+      return $next($request);
+  }
+  ```
+
+> [!WARNING]
+> **Kelemahan RBAC Manual di Skala Menengah/Besar:**
+> 1. Tidak memiliki konsep *Permissions* granular (hanya membatasi berbasis Role, sulit mengatur variasi izin detail).
+> 2. Query relasi `role_user` dieksekusi berulang-ulang tanpa sistem caching memori.
+> 3. Sulit membangun panel manajemen hak akses dinamis di mana Super Admin dapat mencentang izin baru lewat antarmuka web.
+
+### B. Pendekatan 2: Package Industri `spatie/laravel-permission`
+Package `spatie/laravel-permission` adalah standar de facto di industri Laravel. Package ini mengadopsi model **NIST RBAC** yang memisahkan antara Peran (*Roles*) dan Izin (*Permissions*):
+
+```
+[ User ] <──(M:N)──> [ Role ] <──(M:N)──> [ Permission ]
+   │                                              ▲
+   └────────────────────(M:N)─────────────────────┘
+                 (Direct Permissions)
+```
+
+- **Tabel Basis Data yang Dihasilkan Spatie:**
+  1. `roles` (nama peran: `super-admin`, `dosen`, `mahasiswa`)
+  2. `permissions` (nama izin atomik: `create courses`, `publish courses`, `grade assignments`)
+  3. `model_has_roles` (relasi user ke role polymorphic)
+  4. `role_has_permissions` (relasi role ke daftar izin)
+  5. `model_has_permissions` (izin langsung ke pengguna tertentu / *override*)
+
+### C. Tabel Komparasi Komprehensif:
+
+| Kriteria Evaluasi | RBAC Manual (Tabel Sederhana) | Spatie Laravel-Permission |
+| :--- | :--- | :--- |
+| **Granularitas Akses** | Kasar (Hanya level Role) | Sangat Halus (Roles + Atomic Permissions) |
+| **Direct Permissions** | ❌ Sulit (harus modifikasi skema DB) | ✅ Bawaan (`$user->givePermissionTo()`) |
+| **Sistem Caching** | ❌ Manual (rentan query berulang) | ✅ Otomatis (Cache tag / Redis / File cache) |
+| **Blade Directives** | ❌ Harus buat directive manual | ✅ Bawaan (`@role`, `@hasanyrole`, `@can`) |
+| **Integrasi Laravel Gate** | ❌ Perlu mapping manual | ✅ Otomatis terdaftar ke Laravel Gate |
+| **Rekomendasi Penggunaan** | Prototipe sederhana 1-2 tabel | Proyek Komersial / Enterprise / Capstone |
+
+---
+
+## 6. FITUR PENGAMANAN AKUN LANJUTAN
+
+### A. Email Verification (`MustVerifyEmail`)
+Mencegah pendaftaran akun bot dan memastikan alamat email pengguna valid:
+```php
+namespace App\Models;
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class User extends Authenticatable implements MustVerifyEmail
+{
+    // ...
+}
+```
+Pasang middleware `verified` pada rute yang membutuhkan akun terverifikasi:
+```php
+Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])
+    ->middleware(['auth', 'verified']);
+```
+
+### B. Password Reset Flow & Token Expiration
+Laravel mengamankan alur lupa kata sandi dengan mekanisme kriptografis:
+1. Pengguna memasukkan email di form `/forgot-password`.
+2. Laravel menghasilkan token acak 64 karakter, melakukan hashing SHA-256, dan menyimpannya di tabel `password_reset_tokens`.
+3. Email dikirim dengan tautan aman bertanda tangan digital (*signed token*).
+4. Tautan memiliki masa kedaluwarsa waktu (default: 60 menit) yang diatur pada `config/auth.php`:
+   ```php
+   'passwords' => [
+       'users' => [
+           'provider' => 'users',
+           'table' => 'password_reset_tokens',
+           'expire' => 60, // Menit sebelum token hangus
+           'throttle' => 60, // Delay detik antar permintaan reset
+       ],
+   ],
+   ```
+5. Saat pengguna memasukkan password baru, token diverifikasi, password baru di-hash via `Hash::make()`, token dihapus dari database, dan `remember_token` dirotasi untuk memutus sesi login lama.
+
+### C. Password Confirmation (`password.confirm`)
+Melindungi tindakan sensitif (misal: mengganti rekening bank, mengubah password, atau menghapus akun) dari pihak ketiga yang mengakses laptop user yang lupa di-lock:
+```php
+Route::get('/profile/payout-settings', [PayoutController::class, 'edit'])
+    ->middleware(['auth', 'password.confirm']);
+```
+Jika sesi konfirmasi telah melewati batas waktu (default 3 jam / 10800 detik), Laravel otomatis menampilkan modal meminta password sebelum mengizinkan user mengakses rute tersebut.
+
+### D. Konsep Two-Factor Authentication (2FA / TOTP)
+Two-Factor Authentication (2FA) menggabungkan dua faktor bukti identitas:
+1. **Faktor Pengetahuan (*Something You Know*):** Password akun.
+2. **Faktor Kepemilikan (*Something You Have*):** Smartphone dengan aplikasi autentikator (Google Authenticator, Microsoft Authenticator, Aegis).
+
+#### Cara Kerja Algoritma TOTP (RFC 6238):
+1. **Shared Secret Key:** Saat mengaktifkan 2FA, server membuat kunci rahasia acak 32 karakter Base32 (misal: `JBSWY3DPEHPK3PXP`) yang disimpan di database user (terenkripsi).
+2. **Penyajian QR Code:** Server menyajikan URI standar ke dalam bentuk QR Code:
+   ```
+   otpauth://totp/SIAKAD:budi@kampus.ac.id?secret=JBSWY3DPEHPK3PXP&issuer=SIAKAD
+   ```
+3. **Kalkulasi 6-Digit OTP:**
+   Aplikasi di smartphone dan server menghitung kode numerik berbasis waktu saat ini ($T$) dengan interval 30 detik:
+   $$T = \left\lfloor \frac{\text{Current Unix Timestamp}}{30} \right\rfloor$$
+   $$\text{OTP} = \text{Truncate}(\text{HMAC-SHA1}(\text{Secret Key}, T)) \pmod{10^6}$$
+4. **Verifikasi Drift Window:** Server memverifikasi kecocokan kode dengan toleransi window $\pm 30$ detik untuk mengantisipasi perbedaan sinkronisasi jam antara ponsel pengguna dan server.
+5. **Recovery Codes:** Server menghasilkan 8–10 kode darurat sekali pakai (*single-use hashed recovery codes*) yang wajib dicatat pengguna jika ponselnya hilang atau rusak.
+
+---
+
+## 7. LANGKAH PRAKTIKUM LABORATORIUM
+
+### Langkah 1: Instalasi Package Spatie & Konfigurasi User Model
+```bash
+composer require spatie/laravel-permission
+php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
+php artisan migrate
+```
+Buka `app/Models/User.php`:
+```php
+namespace App\Models;
+
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable implements MustVerifyEmail
+{
+    use HasRoles;
+    // ...
+}
+```
+
+### Langkah 2: Membuat Role & Permission Seeder
+Buat file `database/seeders/RoleAndPermissionSeeder.php`:
+```php
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
+
+class RoleAndPermissionSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // 1. Reset cache izin Spatie
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // 2. Buat permissions
+        Permission::findOrCreate('create courses');
+        Permission::findOrCreate('edit courses');
+        Permission::findOrCreate('delete courses');
+        Permission::findOrCreate('enroll courses');
+
+        // 3. Buat roles dan pasang permissions
+        $roleDosen = Role::findOrCreate('dosen');
+        $roleDosen->givePermissionTo(['create courses', 'edit courses', 'delete courses']);
+
+        $roleMhs = Role::findOrCreate('mahasiswa');
+        $roleMhs->givePermissionTo(['enroll courses']);
+
+        Role::findOrCreate('super-admin'); // Hak akses absolut otomatis via Gate::before
+    }
+}
+```
+
+### Langkah 3: Konfigurasi Super Admin Bypass Hook
+Buka `app/Providers/AppServiceProvider.php`:
 ```php
 namespace App\Providers;
 
@@ -303,9 +401,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        // Super Admin Bypass Hook:
-        // Jika callback mengembalikan nilai `true`, seluruh pengecekan Gate & Policy otomatis lolos!
-        // Jika mengembalikan `null`, Laravel akan melanjutkan evaluasi ke Policy/Gate terkait.
+        // Super admin otomatis bypass seluruh pengecekan otorisasi
         Gate::before(function (User $user, string $ability) {
             return $user->hasRole('super-admin') ? true : null;
         });
@@ -313,67 +409,18 @@ class AppServiceProvider extends ServiceProvider
 }
 ```
 
-> [!TIP]
-> **Gotcha Cache Spatie:** Spatie menyimpan izin dan peran pengguna di memori cache aplikasi. Jika Anda mengubah permission di database atau seeder tetapi hak akses tidak berubah, jalankan perintah reset cache:
-> ```bash
-> php artisan permission:cache-reset
-> ```
-
----
-
-#### Langkah 4: Pengujian Hak Akses di Controller
-Buka `app/Http/Controllers/CourseController.php`:
+### Langkah 4: Mendaftarkan Middleware Alias (Laravel 11/12)
+Buka `bootstrap/app.php`:
 ```php
-namespace App\Http\Controllers;
-
-use App\Models\Course;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Http\Request;
-
-class CourseController extends Controller
-{
-    public function update(Request $request, Course $course)
-    {
-        // Memeriksa izin via CoursePolicy::update
-        Gate::authorize('update', $course);
-
-        $course->update($request->validate([
-            'title' => 'required|string|max:255',
-            'price' => 'required|numeric',
-        ]));
-
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Kursus berhasil diperbarui.',
-            'data'    => $course,
-        ]);
-    }
-}
+->withMiddleware(function ($middleware) {
+    $middleware->alias([
+        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+    ]);
+})
 ```
 
 ---
 
-#### Langkah 5: Uji Coba Multi-Role via `php artisan tinker`
-Masuk ke tinker:
-```bash
-php artisan tinker
-```
-Uji coba interaktif hak akses:
-```php
-// Buat Role
-$roleDosen = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'dosen']);
-$roleMhs = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'mahasiswa']);
-
-// Ambil User
-$dosen = App\Models\User::first();
-$dosen->assignRole('dosen');
-
-// Cek Role
-$dosen->hasRole('dosen'); // Return true
-$dosen->hasRole('mahasiswa'); // Return false
-```
-
----
-
-### IV. LEMBAR TUGAS MANDIRI
-Kerjakan soal penugasan terstruktur yang tercantum pada [TUGAS-06.md](TUGAS-06.md).
+## 8. LEMBAR TUGAS MANDIRI
+Selesaikan seluruh instruksi penugasan mingguan yang tercantum pada [TUGAS-06.md](TUGAS-06.md).
